@@ -1,0 +1,49 @@
+# お酒設定サンプル
+
+# 内部名
+# 20文字まで
+name: "sample_liquor"
+# アイテム名
+display_name: "&f&lサンプル&e&lお酒"
+# アイテム説明
+lore:
+  - "サンプルのお酒"
+  - "安くてまずい"
+# 飲むのに必要な権限
+# 全員の場合はmgbar.pにしておけばOK
+permission: "mgbar.p"
+# 権限エラー時に出るメッセージ
+permission_error: "これ飲み物じゃねぇ！"
+# 購入額
+price: 500
+# ハズレ時コマンド
+lose_commands:
+  - "effect give %player% glowing 10 1"
+# ハズレ時メッセージ
+lose_messages:
+  - "外れました"
+# ポーションの色
+potion_color: "RED"
+# 当たり一覧
+wins:
+    # 内部名
+  - name: "sample_win1"
+    # 当選確率（少数第8位まで有効）
+    # 合計が1を越えないように注意する
+    # ""で囲むこと
+    odds: "0.4"
+    # 当選金額
+    price: 1000
+    # 当選時コマンド
+    win_commands:
+      - "effect give %player% glowing 10 1"
+    # 当選時メッセージ
+    win_messages:
+      - "当たりました"
+  - name: "sample_win2"
+    odds: "0.1"
+    price: 2000
+    win_commands:
+      - "effect give %player% glowing 20 1"
+    win_messages:
+      - "大当たりです"

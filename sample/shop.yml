@@ -1,0 +1,25 @@
+# 販売画面設定サンプル
+
+# ショップの表示名
+name: "sample bar"
+# 画面を開くのに必要な権限
+# 全員の場合はmgbar.pにしておけばOK
+permission: "mgbar.p"
+# 権限エラー時のメッセージ
+permission_error: "お前には早い"
+# GUIのサイズ（54までの9の倍数）
+size: 27
+# GUI内のアイテム
+items:
+    # 横位置
+  - x: 0
+    # 縦位置
+    y: 0
+    # マテリアル
+    material: "GRAY_STAINED_GLASS_PANE"
+    # カスタムモデルデータ（未記入の場合0）
+    cmd: 1
+  - x: 1
+    y: 1
+    # お酒の内部名
+    liquor_name: "sample_liquor"
