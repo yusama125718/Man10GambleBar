@@ -4,7 +4,9 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -20,9 +22,9 @@ public final class Man10GambleBar extends JavaPlugin {
     public static String prefix;
     public static Boolean system;
     public static Map<String, Shop> shops;
-    public static Map<String, Liquor> liquors;
-    public static Map<String, ShopKeeper> shop_keepers;
+    public static LinkedHashMap<String, Liquor> liquors;
     public static VaultAPI vaultapi;
+    public static List<Player> remove_players;
 
     private static File shop_folder;
     private static File liquor_folder;
@@ -44,6 +46,7 @@ public final class Man10GambleBar extends JavaPlugin {
     }
 
     public static void SetupPL(){
+        remove_players = new ArrayList<>();
         prefix = mgbar.getConfig().getString("prefix") + "§r";
         system = mgbar.getConfig().getBoolean("system");
         boolean make_shop = true;
@@ -134,12 +137,12 @@ public final class Man10GambleBar extends JavaPlugin {
     }
 
     public static void GetLiquors(){
-        liquors = new HashMap<>();
+        liquors = new LinkedHashMap<>();
         if (liquor_folder.listFiles() == null) return;
         load_file: for (File file : liquor_folder.listFiles()) {
             YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
             // 値チェック
-            if (!config.isString("name") || !config.isString("permission") || !config.isInt("price") || !config.isString("display_name") || !config.isList("lore") || !config.isList("lose_commands") || !config.isList("lose_messages") || !config.isString("potion_color") || !config.isString("permission_error")) {
+            if (!config.isString("name") || !config.isString("permission") || !config.isInt("price") || !config.isString("display_name") || !config.isList("lore") || !config.isList("lose_commands") || !config.isList("lose_messages") || !config.isString("potion_color") || !config.isString("permission_error") || !config.isBoolean("verify_id")) {
                 Bukkit.broadcast(Component.text(prefix + file.getName() + "の読み込みに失敗しました"), "mgbar.op");
                 Bukkit.broadcast(Component.text(prefix + "不足している項目があります"), "mgbar.op");
                 continue;
@@ -158,6 +161,8 @@ public final class Man10GambleBar extends JavaPlugin {
             List<String> lose_commands = config.getStringList("lose_commands");
             List<String> lose_messages = config.getStringList("lose_messages");
             Color color = Helper.ColorFromString(config.getString("potion_color"));
+            Boolean verify_id = config.getBoolean("verify_color");
+            Boolean record = config.getBoolean("record");
 
             // 当選一覧取得
             List<LiquorWin> wins = new ArrayList<>();
@@ -197,7 +202,7 @@ public final class Man10GambleBar extends JavaPlugin {
                 Bukkit.broadcast(Component.text(prefix + "お酒の当選リストがありません"), "mgbar.op");
                 continue;
             }
-            liquors.put(name, new Liquor(name, display_name, permission, lore, price, lose_commands, lose_messages, wins, permission_error, color));
+            liquors.put(name, new Liquor(name, display_name, permission, lore, price, lose_commands, lose_messages, wins, permission_error, color, verify_id, record));
         }
     }
 
@@ -252,8 +257,10 @@ public final class Man10GambleBar extends JavaPlugin {
         public List<String> lose_messages;
         public List<LiquorWin> wins;
         public Color color;
+        public Boolean verify_id;
+        public Boolean record;
 
-        public Liquor(String Name, String DisplayName, String Permission, List<String> Lore, Integer Price, List<String> LoseCommands, List<String> LoseMessages, List<LiquorWin> Wins, String PermissionError, Color Col){
+        public Liquor(String Name, String DisplayName, String Permission, List<String> Lore, Integer Price, List<String> LoseCommands, List<String> LoseMessages, List<LiquorWin> Wins, String PermissionError, Color Col, Boolean VerifyId, Boolean Record){
             name = Name;
             displayName = Component.text(DisplayName.replace("&", "§"));
             permission = Permission;
@@ -266,6 +273,8 @@ public final class Man10GambleBar extends JavaPlugin {
             wins = Wins;
             permission_error = PermissionError;
             color = Col;
+            verify_id = VerifyId;
+            record = Record;
         }
 
         public ItemStack GenLiquor(UUID buy_id){
@@ -275,6 +284,16 @@ public final class Man10GambleBar extends JavaPlugin {
             meta.lore(lore);
             meta.getPersistentDataContainer().set(new NamespacedKey(mgbar, "Man10GambleBar"), PersistentDataType.STRING, name);
             meta.getPersistentDataContainer().set(new NamespacedKey(mgbar, "MGBarID"), PersistentDataType.STRING, buy_id.toString());
+            item.setItemMeta(meta);
+            return item;
+        }
+
+        public ItemStack GenDisplay(){
+            ItemStack item = Helper.GetItem(Material.POTION, displayName, 0);
+            PotionMeta meta = (PotionMeta) item.getItemMeta();
+            meta.setColor(color);
+            meta.lore(lore);
+            meta.getPersistentDataContainer().set(new NamespacedKey(mgbar, "Man10GambleBar"), PersistentDataType.STRING, name);
             item.setItemMeta(meta);
             return item;
         }
@@ -293,18 +312,6 @@ public final class Man10GambleBar extends JavaPlugin {
             price = Price;
             commands = Commands;
             messages = Messages;
-        }
-    }
-
-    public static class ShopKeeper{
-        public String name;
-        public Location position;
-        public String shop_name;
-
-        public ShopKeeper(String Name, String ShopName, Location pos){
-            name = Name;
-            shop_name = ShopName;
-            position = pos;
         }
     }
 }

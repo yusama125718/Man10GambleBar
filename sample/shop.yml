@@ -1,7 +1,7 @@
 # 販売画面設定サンプル
 
-# ショップの表示名
-name: "sample bar"
+# ショップの内部名
+name: "sample_bar"
 # 画面を開くのに必要な権限
 # 全員の場合はmgbar.pにしておけばOK
 permission: "mgbar.p"

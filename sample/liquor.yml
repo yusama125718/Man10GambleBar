@@ -24,6 +24,12 @@ lose_messages:
   - "外れました"
 # ポーションの色
 potion_color: "RED"
+# idを用いた検証をするか
+# ガチャなど他plからアイテムを出す場合はfalseにする
+verify_id: true
+# 記録を参照できるようにするか
+# 隠し要素にしたい場合はOFF推奨
+record: true
 # 当たり一覧
 wins:
     # 内部名

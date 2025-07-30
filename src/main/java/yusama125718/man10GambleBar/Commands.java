@@ -2,15 +2,17 @@ package yusama125718.man10GambleBar;
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.command.*;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Villager;
+import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,6 +38,8 @@ public class Commands implements CommandExecutor, TabCompleter {
                         sender.sendMessage(prefix + "/mgbar [on/off] : システムをon/offします");
                         sender.sendMessage(prefix + "/mgbar reload :　設定を再読み込みします");
                         sender.sendMessage(prefix + "/mgbar sawn [バーデンダー名] [バーの名前] : 現在の位置にバーテンダーを配置します");
+                        sender.sendMessage(prefix + "/mgbar remove : 右クリックしたバーカウンターを削除します※削除するかもう一度コマンド実行で削除モード終了");
+                        sender.sendMessage(prefix + "/mgbar rank [内部名] [ページ数] : バーカウンターの一覧を表示します※一般権限で実行可能");
                         sender.sendMessage(prefix + "/mgbar give [MCID] [お酒の内部名] : 指定したプレイヤーにお酒を付与します");
                     }
                     return true;
@@ -62,7 +66,7 @@ public class Commands implements CommandExecutor, TabCompleter {
                     sender.sendMessage(prefix + "システムを無効にしました");
                     return true;
                 }
-                if (args[0].equals("reload")){
+                if (args[0].equals("reload") && sender.hasPermission("mgbar.op")){
                     system = false;
                     SetupPL();
                     sender.sendMessage(prefix + "設定を再読み込みしました");
@@ -70,7 +74,24 @@ public class Commands implements CommandExecutor, TabCompleter {
                 }
                 if (args[0].equals("record")){
                     if (!CheckSystem((Player) sender)) return true;
-                    GUI.OpenRecordMenu((Player) sender);
+                    GUI.OpenRecordMenu((Player) sender, 1);
+                    return true;
+                }
+                if (args[0].equals("counters") && sender.hasPermission("mgbar.op")){
+                    sender.sendMessage(prefix + "カウンター一覧");
+                    for (String name: shops.keySet()){
+                        sender.sendMessage(name);
+                    }
+                    return true;
+                }
+                if (args[0].equals("remove") && sender.hasPermission("mgbar.op")){
+                    if (remove_players.contains((Player) sender)){
+                        remove_players.remove((Player) sender);
+                        sender.sendMessage(prefix + "削除モードを終了しました");
+                        return true;
+                    }
+                    remove_players.add((Player) sender);
+                    sender.sendMessage(prefix + "削除したいバーテンダーを右クリックしてください");
                     return true;
                 }
                 break;
@@ -127,9 +148,45 @@ public class Commands implements CommandExecutor, TabCompleter {
                         // インベントリはメインスレッドでいじる
                         Bukkit.getScheduler().runTask(mgbar, () -> target.getInventory().addItem(liq.GenLiquor(buy_id).clone()));
                         sender.sendMessage(Component.text(prefix + mcid + "に" + liq.name + "§rを渡しました"));
-                        target.sendMessage(Component.text(prefix + liq.name + "§rを入手しました"));
+                        target.sendMessage(Component.text(prefix + "§rお酒を入手しました"));
                     });
                     th.start();
+                    return true;
+                }
+                if (args[0].equals("rank")){
+                    if (!liquors.containsKey(args[1])){
+                        sender.sendMessage(prefix + "その名前のお酒はありません");
+                        return true;
+                    }
+                    if (!args[2].matches("-?\\d+")){
+                        sender.sendMessage(prefix + "ページ数は数字で入力してください");
+                        return true;
+                    }
+                    int page = Integer.parseInt(args[2]);
+                    if (page < 1){
+                        sender.sendMessage(prefix + "ページ数は1以上で入力してください");
+                        return true;
+                    }
+                    Helper.SendDrinkRanking((Player) sender,liquors.get(args[1]), page);
+                    return true;
+                }
+                if (args[0].equals("spawn") && sender.hasPermission("mgbar.op")){
+                    if (!shops.containsKey(args[2])){
+                        sender.sendMessage(prefix + "その名前のカウンターはありません");
+                        return true;
+                    }
+                    Shop shop = shops.get(args[2]);
+                    Location loc = ((Player) sender).getLocation();
+                    Villager villager = (Villager) ((Player) sender).getWorld().spawnEntity(loc, EntityType.VILLAGER);
+                    villager.setCustomName(args[1].replace("&", "§"));
+                    villager.setCustomNameVisible(true);
+                    villager.setAI(false); // AIを無効化（動かないようにする）
+                    villager.setInvulnerable(true); // 無敵化
+                    villager.setPersistent(true);
+                    villager.setProfession(Villager.Profession.LIBRARIAN); //職業設定
+                    villager.getPersistentDataContainer().set(new NamespacedKey(mgbar, "MGBarShop"), PersistentDataType.STRING, shop.name);
+                    sender.sendMessage(prefix + "バーテンダーを配置しました");
+                    return true;
                 }
                 break;
         }
