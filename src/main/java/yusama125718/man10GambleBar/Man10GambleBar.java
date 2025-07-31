@@ -2,12 +2,10 @@ package yusama125718.man10GambleBar;
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.*;
-import org.bukkit.command.Command;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -105,6 +103,14 @@ public final class Man10GambleBar extends JavaPlugin {
             }
             // 値取得
             String name = config.getString("name");
+
+            // すでに存在する内部名ならエラー
+            if (shops.containsKey(name)){
+                Bukkit.broadcast(Component.text(prefix + file.getName() + "の読み込みに失敗しました"), "mgbar.op");
+                Bukkit.broadcast(Component.text(prefix + "内部名がすでに存在します"), "mgbar.op");
+                continue;
+            }
+
             String permission = config.getString("permission");
             String permission_error = config.getString("permission_error");
             int size = config.getInt("size");
@@ -166,6 +172,13 @@ public final class Man10GambleBar extends JavaPlugin {
             Color color = Helper.ColorFromString(config.getString("potion_color"));
             Boolean verify_id = config.getBoolean("verify_color");
             Boolean record = config.getBoolean("record");
+
+            // すでに存在する内部名ならエラー
+            if (liquors.containsKey(name)){
+                Bukkit.broadcast(Component.text(prefix + file.getName() + "の読み込みに失敗しました"), "mgbar.op");
+                Bukkit.broadcast(Component.text(prefix + "内部名がすでに存在します"), "mgbar.op");
+                continue;
+            }
 
             // 当選一覧取得
             List<LiquorWin> wins = new ArrayList<>();
