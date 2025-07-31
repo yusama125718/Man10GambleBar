@@ -70,7 +70,7 @@ public class Helper {
             MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
             try {
                 // 使用可能か確認
-                String query = "SELECT mcid, COUNT(*) AS drink_count, COUNT(CASE WHEN win_table IS NOT NULL THEN 1 END) AS win_count FROM bar_drink_log WHERE liquor_name = '" + liq.name + "' GROUP BY mcid LIMIT 10 OFFSET " + (page - 1) * 10 + ";";
+                String query = "SELECT mcid, COUNT(*) AS drink_count, COUNT(CASE WHEN win_table IS NOT NULL THEN 1 END) AS win_count FROM bar_drink_log WHERE liquor_name = '" + liq.name + "' GROUP BY mcid ORDER BY drink_count LIMIT 10 OFFSET " + (page - 1) * 10 + ";";
                 ResultSet set = mysql.query(query);
                 p.sendMessage(text(prefix + "飲んだ数ランキング"));
                 p.sendMessage(liq.displayName);

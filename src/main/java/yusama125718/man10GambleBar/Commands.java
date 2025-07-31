@@ -38,8 +38,9 @@ public class Commands implements CommandExecutor, TabCompleter {
                         sender.sendMessage(prefix + "/mgbar reload :　設定を再読み込みします");
                         sender.sendMessage(prefix + "/mgbar sawn [バーデンダー名] [バーの名前] : 現在の位置にバーテンダーを配置します");
                         sender.sendMessage(prefix + "/mgbar remove : 右クリックしたバーカウンターを削除します※削除するかもう一度コマンド実行で削除モード終了");
-                        sender.sendMessage(prefix + "/mgbar rank [内部名] [ページ数] : バーカウンターの一覧を表示します※一般権限で実行可能");
+                        sender.sendMessage(prefix + "/mgbar rank [内部名] [ページ数] : ランキングメニューを開きます※一般権限で実行可能");
                         sender.sendMessage(prefix + "/mgbar give [MCID] [お酒の内部名] : 指定したプレイヤーにお酒を付与します");
+                        sender.sendMessage(prefix + "/mgbar counters : バーの一覧を表示します");
                     }
                     return true;
                 }
