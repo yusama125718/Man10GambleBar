@@ -183,7 +183,6 @@ public class Commands implements CommandExecutor, TabCompleter {
                     villager.setAI(false); // AIを無効化（動かないようにする）
                     villager.setInvulnerable(true); // 無敵化
                     villager.setPersistent(true);
-                    villager.setProfession(Villager.Profession.LIBRARIAN); //職業設定
                     villager.getPersistentDataContainer().set(new NamespacedKey(mgbar, "MGBarShop"), PersistentDataType.STRING, shop.name);
                     sender.sendMessage(prefix + "バーテンダーを配置しました");
                     return true;

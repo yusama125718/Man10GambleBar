@@ -5,11 +5,14 @@ import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.io.File;
 import java.math.BigDecimal;
@@ -284,6 +287,7 @@ public final class Man10GambleBar extends JavaPlugin {
             meta.lore(lore);
             meta.getPersistentDataContainer().set(new NamespacedKey(mgbar, "Man10GambleBar"), PersistentDataType.STRING, name);
             meta.getPersistentDataContainer().set(new NamespacedKey(mgbar, "MGBarID"), PersistentDataType.STRING, buy_id.toString());
+            meta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
             item.setItemMeta(meta);
             return item;
         }
@@ -294,6 +298,8 @@ public final class Man10GambleBar extends JavaPlugin {
             meta.setColor(color);
             meta.lore(lore);
             meta.getPersistentDataContainer().set(new NamespacedKey(mgbar, "Man10GambleBar"), PersistentDataType.STRING, name);
+            meta.addCustomEffect(new PotionEffect(PotionEffectType.BLINDNESS, 1, 1), false);
+            meta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
             item.setItemMeta(meta);
             return item;
         }

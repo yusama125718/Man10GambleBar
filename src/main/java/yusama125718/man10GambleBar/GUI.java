@@ -36,7 +36,7 @@ public class GUI {
 
     public static void OpenShopMenu(Player p, Man10GambleBar.Shop shop){
         p.closeInventory();
-        Inventory inv = Bukkit.createInventory(null,54, Component.text("[Man10GambleBar] バーカウンター"));
+        Inventory inv = Bukkit.createInventory(null, shop.size, Component.text("[Man10GambleBar] バーカウンター"));
         for (Man10GambleBar.ShopItem item: shop.items){
             int slot = item.x + item.y * 9;
             if (item.liquor_name == null) inv.setItem(slot, item.item.clone());

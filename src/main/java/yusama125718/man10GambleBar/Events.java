@@ -12,6 +12,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.PotionMeta;
@@ -267,6 +268,7 @@ public class Events implements Listener {
         e.setCancelled(true);
         if (remove_players.contains(e.getPlayer())){
             villager.remove();
+            remove_players.remove(e.getPlayer());
             e.getPlayer().sendMessage(Component.text(prefix + "バーカウンターを削除しました"));
             e.getPlayer().sendMessage(Component.text(prefix + "削除モードを終了しました"));
             return;
@@ -280,5 +282,14 @@ public class Events implements Listener {
         }
 
         GUI.OpenShopMenu(e.getPlayer(), shop);
+    }
+
+    // 同時にこっちも呼ばれるのでこっちもキャンセルしないといけない
+    @EventHandler
+    public void onVillagerInteract2(PlayerInteractEntityEvent e) {
+        if (!(e.getRightClicked() instanceof Villager)) return;
+        Villager villager = (Villager) e.getRightClicked();
+        if (!villager.getPersistentDataContainer().has(new NamespacedKey(mgbar, "MGBarShop"))) return;
+        e.setCancelled(true);
     }
 }
