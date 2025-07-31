@@ -13,8 +13,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static yusama125718.man10GambleBar.Helper.CheckSystem;
 import static yusama125718.man10GambleBar.Man10GambleBar.*;
@@ -194,8 +193,89 @@ public class Commands implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    // Tab補完
     @Override
-    public @Nullable List<String> onTabComplete(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s, @NotNull String[] strings) {
-        return List.of();
+    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String str, @NotNull String[] args) {
+        if (!command.getName().equalsIgnoreCase("mgbar") || !sender.hasPermission("mgbar.p")) return null;
+        if (args.length == 1){
+            if (args[0].isEmpty())
+            {
+                if (sender.hasPermission("mgbar.op")) return Arrays.asList("give","off","on","open","record","reload","remove","spawn");
+                else return Collections.singletonList("record");
+            }
+            else{
+                if (sender.hasPermission("mgbar")){
+                    if ("record".startsWith(args[0])) {
+                        return Collections.singletonList("record");
+                    }
+                }
+                else {
+                    if ("give".startsWith(args[0])) {
+                        return Collections.singletonList("give");
+                    }
+                    else if ("off".startsWith(args[0]) && "on".startsWith(args[0]) && "open".startsWith(args[0])) {
+                        return Arrays.asList("off", "on", "open");
+                    }
+                    else if ("off".startsWith(args[0])) {
+                        return Collections.singletonList("off");
+                    }
+                    else if ("on".startsWith(args[0])) {
+                        return Collections.singletonList("on");
+                    }
+                    else if ("open".startsWith(args[0])) {
+                        return Collections.singletonList("open");
+                    }
+                    else if ("record".startsWith(args[0]) && "reload".startsWith(args[0]) && "remove".startsWith(args[0])) {
+                        return Arrays.asList("record", "reload", "remove");
+                    }
+                    else if ("record".startsWith(args[0])) {
+                        return Collections.singletonList("record");
+                    }
+                    else if ("protect".startsWith(args[0])) {
+                        return Collections.singletonList("reload");
+                    }
+                    else if ("recipe".startsWith(args[0])) {
+                        return Collections.singletonList("remove");
+                    }
+                    else if ("reload".startsWith(args[0])) {
+                        return Collections.singletonList("spawn");
+                    }
+                }
+            }
+        }
+        else if (args.length == 2 && sender.hasPermission("mgbar")){
+            if (args[0].equals("give")){
+                List<String> returnlist = new ArrayList<>();
+                for (Player p : Bukkit.getOnlinePlayers()) returnlist.add(p.getName());
+                return returnlist;
+            }
+            else if (args[0].equals("rank")){
+                return Collections.singletonList("[内部名]");
+            }
+            else if (args[0].equals("spawn")){
+                return Collections.singletonList("[バーテンダー名]");
+            }
+            else if (args[0].equals("open")){
+                List<String> returnlist = new ArrayList<>();
+                for (Shop s : shops.values()) returnlist.add(s.name);
+                return returnlist;
+            }
+        }
+        else if (args.length == 3 && sender.hasPermission("mgbar")){
+            if (args[0].equals("rank")){
+                return Collections.singletonList("[ページ]");
+            }
+            else if (args[0].equals("spawn")){
+                List<String> returnlist = new ArrayList<>();
+                for (Shop s : shops.values()) returnlist.add(s.name);
+                return returnlist;
+            }
+            else if (args[0].equals("give")){
+                List<String> returnlist = new ArrayList<>();
+                for (Liquor l : liquors.values()) returnlist.add(l.name);
+                return returnlist;
+            }
+        }
+        return null;
     }
 }

@@ -166,7 +166,7 @@ public class Events implements Listener {
                 // DB処理はスレッドで行う
                 Thread th = new Thread(() -> {
                     MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
-                    String query = "INSERT INTO bar_shop_log (time, liquor_name, mcid, uuid, price, buy_id) VALUES ('" + LocalDateTime.now() + "', '" + liq.name + "', '" + mcid + "', '" + uuid + "', 0, '" + buy_id + "')";
+                    String query = "INSERT INTO bar_shop_log (time, liquor_name, mcid, uuid, price, buy_id) VALUES ('" + LocalDateTime.now() + "', '" + liq.name + "', '" + mcid + "', '" + uuid + "', " + liq.price + ", '" + buy_id + "')";
                     if (!mysql.execute(query)) {
                         e.getWhoClicked().sendMessage(Component.text(prefix + "DBの保存に失敗しました"));
                         return;
@@ -178,7 +178,7 @@ public class Events implements Listener {
                             return;
                         }
                         e.getWhoClicked().getInventory().addItem(liq.GenLiquor(buy_id).clone());
-                        e.getWhoClicked().sendMessage(Component.text(prefix + "§rを購入しました"));
+                        e.getWhoClicked().sendMessage(Component.text(prefix + "§r購入しました"));
                     });
                 });
                 th.start();
