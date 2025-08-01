@@ -1,5 +1,6 @@
 prefix: "[Man10GambleBar]"
 system: false
+disable_worlds:
 
 mysql:
   host: localhost

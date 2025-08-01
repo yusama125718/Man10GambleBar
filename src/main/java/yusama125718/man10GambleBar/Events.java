@@ -53,6 +53,10 @@ public class Events implements Listener {
                 return;
             }
             Liquor liq = liquors.get(name);
+            if (disable_worlds.contains(e.getPlayer().getWorld().getName())){
+                e.getPlayer().sendMessage(Component.text(prefix + "§cこのワールドでは飲めません"));
+                return;
+            }
             // 権限確認
             if (!e.getPlayer().hasPermission(liq.permission)) {
                 e.getPlayer().sendMessage(Component.text(liq.permission_error.replace("&", "§")));

@@ -26,6 +26,7 @@ public final class Man10GambleBar extends JavaPlugin {
     public static LinkedHashMap<String, Liquor> liquors;
     public static VaultAPI vaultapi;
     public static List<Player> remove_players;
+    public static List<String> disable_worlds;
 
     private static File shop_folder;
     private static File liquor_folder;
@@ -48,8 +49,10 @@ public final class Man10GambleBar extends JavaPlugin {
 
     public static void SetupPL(){
         remove_players = new ArrayList<>();
+        disable_worlds = new ArrayList<>();
         prefix = mgbar.getConfig().getString("prefix") + "§r";
         system = mgbar.getConfig().getBoolean("system");
+        disable_worlds = mgbar.getConfig().getStringList("disable_worlds");
         boolean make_shop = true;
         boolean make_liquor = true;
         // フォルダを取得

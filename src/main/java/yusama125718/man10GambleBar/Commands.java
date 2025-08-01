@@ -41,6 +41,7 @@ public class Commands implements CommandExecutor, TabCompleter {
                         sender.sendMessage(prefix + "§7/mgbar rank [内部名] [ページ数] §f§l: ランキングメニューを開きます※一般権限で実行可能");
                         sender.sendMessage(prefix + "§7/mgbar give [MCID] [お酒の内部名] §f§l: 指定したプレイヤーにお酒を付与します");
                         sender.sendMessage(prefix + "§7/mgbar counters §f§l: バーの一覧を表示します");
+                        sender.sendMessage(prefix + "§7/mgbar world §f§l: 無効化するワールドに今いるワールドを追加します※追加済みの場合は削除します");
                     }
                     return true;
                 }
@@ -92,6 +93,20 @@ public class Commands implements CommandExecutor, TabCompleter {
                     }
                     remove_players.add((Player) sender);
                     sender.sendMessage(prefix + "§e削除したいバーテンダーを右クリックしてください");
+                    return true;
+                }
+                if (args[0].equals("world") && sender.hasPermission("mgbar.op")){
+                    String name = ((Player) sender).getWorld().getName();
+                    if (disable_worlds.contains(name)){
+                        disable_worlds.remove(name);
+                        sender.sendMessage(prefix + "§e禁止リストから削除しました");
+                    }
+                    else {
+                        disable_worlds.add(name);
+                        sender.sendMessage(prefix + "§e禁止に追加しました");
+                    }
+                    mgbar.getConfig().set("disable_worlds", disable_worlds);
+                    mgbar.saveConfig();
                     return true;
                 }
                 break;
@@ -201,11 +216,11 @@ public class Commands implements CommandExecutor, TabCompleter {
         if (args.length == 1){
             if (args[0].isEmpty())
             {
-                if (sender.hasPermission("mgbar.op")) return Arrays.asList("give","off","on","open","record","reload","remove","spawn");
+                if (sender.hasPermission("mgbar.op")) return Arrays.asList("give","off","on","open","record","reload","remove","spawn", "world");
                 else return Collections.singletonList("record");
             }
             else{
-                if (sender.hasPermission("mgbar")){
+                if (!sender.hasPermission("mgbar.op")){
                     if ("record".startsWith(args[0])) {
                         return Collections.singletonList("record");
                     }
@@ -241,10 +256,13 @@ public class Commands implements CommandExecutor, TabCompleter {
                     else if ("reload".startsWith(args[0])) {
                         return Collections.singletonList("spawn");
                     }
+                    else if ("world".startsWith(args[0])) {
+                        return Collections.singletonList("world");
+                    }
                 }
             }
         }
-        else if (args.length == 2 && sender.hasPermission("mgbar")){
+        else if (args.length == 2 && sender.hasPermission("mgbar.op")){
             if (args[0].equals("give")){
                 List<String> returnlist = new ArrayList<>();
                 for (Player p : Bukkit.getOnlinePlayers()) returnlist.add(p.getName());
@@ -262,7 +280,7 @@ public class Commands implements CommandExecutor, TabCompleter {
                 return returnlist;
             }
         }
-        else if (args.length == 3 && sender.hasPermission("mgbar")){
+        else if (args.length == 3 && sender.hasPermission("mgbar.op")){
             if (args[0].equals("rank")){
                 return Collections.singletonList("[ページ]");
             }
