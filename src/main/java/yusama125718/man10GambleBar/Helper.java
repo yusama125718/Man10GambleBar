@@ -10,7 +10,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.event.ClickEvent.runCommand;
 import static yusama125718.man10GambleBar.Man10GambleBar.*;
 
@@ -18,16 +17,7 @@ public class Helper {
     public static ItemStack GetItem(Material mate, String name, Integer cmd){
         ItemStack item = new ItemStack(mate, 1);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(text(name));
-        meta.setCustomModelData(cmd);
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    public static ItemStack GetItem(Material mate, Component name, Integer cmd){
-        ItemStack item = new ItemStack(mate, 1);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(name);
+        meta.displayName(Component.text(name));
         meta.setCustomModelData(cmd);
         item.setItemMeta(meta);
         return item;
@@ -58,7 +48,7 @@ public class Helper {
 
     public static Boolean CheckSystem(Player p){
         if (!system){
-            p.sendMessage(prefix + "システムは停止中です");
+            p.sendMessage(prefix + "§cシステムは停止中です");
             return false;
         }
         return true;
@@ -70,20 +60,20 @@ public class Helper {
             MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
             try {
                 // 使用可能か確認
-                String query = "SELECT mcid, COUNT(*) AS drink_count, COUNT(CASE WHEN win_table IS NOT NULL THEN 1 END) AS win_count FROM bar_drink_log WHERE liquor_name = '" + liq.name + "' GROUP BY mcid ORDER BY drink_count LIMIT 10 OFFSET " + (page - 1) * 10 + ";";
+                String query = "SELECT mcid, COUNT(*) AS drink_count, COUNT(CASE WHEN win_table IS NOT NULL THEN 1 END) AS win_count FROM bar_drink_log WHERE liquor_name = '" + liq.name + "' GROUP BY mcid ORDER BY drink_count DESC LIMIT 10 OFFSET " + (page - 1) * 10 + ";";
                 ResultSet set = mysql.query(query);
-                p.sendMessage(text(prefix + "飲んだ数ランキング"));
+                p.sendMessage(Component.text(prefix + "§e§l飲んだ数ランキング"));
                 p.sendMessage(liq.displayName);
                 int cnt = 1;
                 while (set.next()){
-                    p.sendMessage(text(cnt + (page - 1) * 10 + "位：" + set.getString("mcid") + "  " + set.getInt("drink_count") + "本（うち" + set.getInt("win_count") + "本当選）"));
+                    p.sendMessage(Component.text("§e§n" + cnt + (page - 1) * 10 + "位：§c§l" + set.getString("mcid") + "§r§f  " + set.getInt("drink_count") + "本（うち" + set.getInt("win_count") + "本当選）"));
                     cnt++;
                 }
-                if (page != 1) p.sendMessage(text("§e§l[前のページ]").clickEvent(runCommand("/mgbar rank " + liq.name + " " + (page - 1))));
-                if (cnt != 1) p.sendMessage(text("§e§l[次のページ]").clickEvent(runCommand("/mgbar rank " + liq.name + " " + (page + 1))));
+                if (page != 1) p.sendMessage(Component.text("§b§l§n[前のページ]").clickEvent(runCommand("/mgbar rank " + liq.name + " " + (page - 1))));
+                if (cnt != 1) p.sendMessage(Component.text("§b§l§n[次のページ]").clickEvent(runCommand("/mgbar rank " + liq.name + " " + (page + 1))));
                 mysql.close();
             } catch (SQLException error) {
-                p.sendMessage(text(prefix + "DBの参照に失敗しました"));
+                p.sendMessage(Component.text(prefix + "DBの参照に失敗しました"));
                 try {
                     mysql.close();
                 } catch (NullPointerException throwables) {

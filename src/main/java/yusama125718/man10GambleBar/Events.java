@@ -3,18 +3,24 @@ package yusama125718.man10GambleBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.persistence.PersistentDataType;
 
@@ -43,7 +49,7 @@ public class Events implements Listener {
             e.setCancelled(true);
             if (!Helper.CheckSystem(e.getPlayer())) return;
             if (!liquors.containsKey(name)){
-                e.getPlayer().sendMessage(Component.text(prefix + "お酒が存在しません"));
+                e.getPlayer().sendMessage(Component.text(prefix + "§cお酒が存在しません"));
                 return;
             }
             Liquor liq = liquors.get(name);
@@ -52,12 +58,25 @@ public class Events implements Listener {
                 e.getPlayer().sendMessage(Component.text(liq.permission_error.replace("&", "§")));
                 return;
             }
-            e.getPlayer().getInventory().removeItemAnySlot(e.getItem());
+            PlayerInventory inv = e.getPlayer().getInventory();
+            inv.removeItemAnySlot(item);
+
+            // 飲んだスロットに同じお酒があれば手に持たせる
+            for (ItemStack content: inv.getContents()){
+                if (content == null || item.equals(content) || !content.getType().equals(Material.POTION) || !content.hasItemMeta() || !content.getItemMeta().getPersistentDataContainer().has(new NamespacedKey(mgbar, "Man10GambleBar"), PersistentDataType.STRING)) continue;
+                String str = content.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(mgbar, "Man10GambleBar"), PersistentDataType.STRING);
+                if (!str.equals(name)) continue;
+                inv.removeItemAnySlot(content);
+                if (e.getHand().equals(EquipmentSlot.OFF_HAND)) inv.setItemInOffHand(content);
+                else inv.setItemInMainHand(content.clone());
+                break;
+            }
+
             try {
                 // UUIDが正しい形式か確認（SQLインジェクション対策）
                 UUID.fromString(buy_id);
             } catch (IllegalArgumentException error) {
-                e.getPlayer().sendMessage(Component.text(prefix + "不正なお酒を検知しました"));
+                e.getPlayer().sendMessage(Component.text(prefix + "§c不正なお酒を検知しました"));
                 return;
             }
             // DB処理はスレッドで行う
@@ -70,13 +89,13 @@ public class Events implements Listener {
                         String query = "SELECT * FROM bar_shop_log LEFT OUTER JOIN bar_drink_log ON bar_shop_log.buy_id = bar_drink_log.buy_id WHERE bar_shop_log.buy_id = '" + buy_id + "' AND bar_drink_log.id IS NULL";
                         ResultSet set = mysql.query(query);
                         if (!set.next()) {
-                            e.getPlayer().sendMessage(Component.text(prefix + "このお酒は有効でないので使用できません"));
+                            e.getPlayer().sendMessage(Component.text(prefix + "§cこのお酒は有効でないので使用できません"));
                             mysql.close();
                             return;
                         }
                         mysql.close();
                     } catch (SQLException error) {
-                        e.getPlayer().sendMessage(Component.text(prefix + "DBの参照に失敗しました"));
+                        e.getPlayer().sendMessage(Component.text(prefix + "§cDBの参照に失敗しました"));
                         try {
                             mysql.close();
                         } catch (NullPointerException throwables) {
@@ -101,24 +120,25 @@ public class Events implements Listener {
                 int price = win == null ? 0 : win.price;
                 String query = "INSERT INTO bar_drink_log (time, liquor_name, mcid, uuid, price, buy_id, win_table) VALUES ('" + LocalDateTime.now() + "', '" + liq.name + "', '" + e.getPlayer().getName() + "', '" + e.getPlayer().getUniqueId() + "', " + price + ", '" + buy_id + "', " + win_name + ");";
                 if (!mysql.execute(query)){
-                    e.getPlayer().sendMessage(Component.text(prefix + "DBの保存に失敗しました"));
+                    e.getPlayer().sendMessage(Component.text(prefix + "§cDBの保存に失敗しました"));
                     try {
                         mysql.close();
                     } catch (NullPointerException throwables) {
                         throwables.printStackTrace();
                     }
+                    return;
                 }
                 LiquorWin finalWin = win;
                 Bukkit.getScheduler().runTask(mgbar, () -> {
                     // ハズレ時処理
                     if (finalWin == null) {
-                        for (String cmd: liq.lose_commands) Bukkit.getServer().dispatchCommand(Bukkit.getServer().getConsoleSender(), cmd.replace("%player%", e.getPlayer().getName()));
-                        for (String message: liq.lose_messages) e.getPlayer().sendMessage(Component.text(message.replace("&", "§")));
+                        if (liq.lose_commands != null) for (String cmd: liq.lose_commands) Bukkit.getServer().dispatchCommand(Bukkit.getServer().getConsoleSender(), cmd.replace("%player%", e.getPlayer().getName()));
+                        if (liq.lose_messages != null) for (String message: liq.lose_messages) e.getPlayer().sendMessage(Component.text(message.replace("&", "§")));
                     }
                     // 当選時処理
                     else {
-                        for (String cmd: finalWin.commands) Bukkit.getServer().dispatchCommand(Bukkit.getServer().getConsoleSender(), cmd.replace("%player%", e.getPlayer().getName()));
-                        for (String message: finalWin.messages) e.getPlayer().sendMessage(Component.text(message.replace("&", "§")));
+                        if (finalWin.commands != null) for (String cmd: finalWin.commands) Bukkit.getServer().dispatchCommand(Bukkit.getServer().getConsoleSender(), cmd.replace("%player%", e.getPlayer().getName()));
+                        if (finalWin.messages != null) for (String message: finalWin.messages) e.getPlayer().sendMessage(Component.text(message.replace("&", "§")));
                         vaultapi.deposit(e.getPlayer().getUniqueId(), finalWin.price);
                     }
                 });
@@ -150,12 +170,12 @@ public class Events implements Listener {
                 if (!liquors.containsKey(liq_name)) return;
                 Liquor liq = liquors.get(liq_name);
                 if (vaultapi.getBalance(e.getWhoClicked().getUniqueId()) < liq.price) {
-                    e.getWhoClicked().sendMessage(Component.text(prefix + "残高が不足しています！"));
+                    e.getWhoClicked().sendMessage(Component.text(prefix + "§c残高が不足しています！"));
                     e.getWhoClicked().closeInventory();
                     return;
                 }
                 if (e.getWhoClicked().getInventory().firstEmpty() == -1) {
-                    e.getWhoClicked().sendMessage(Component.text(prefix + "インベントリが満杯です"));
+                    e.getWhoClicked().sendMessage(Component.text(prefix + "§cインベントリが満杯です"));
                     e.getWhoClicked().closeInventory();
                     return;
                 }
@@ -168,17 +188,17 @@ public class Events implements Listener {
                     MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
                     String query = "INSERT INTO bar_shop_log (time, liquor_name, mcid, uuid, price, buy_id) VALUES ('" + LocalDateTime.now() + "', '" + liq.name + "', '" + mcid + "', '" + uuid + "', " + liq.price + ", '" + buy_id + "')";
                     if (!mysql.execute(query)) {
-                        e.getWhoClicked().sendMessage(Component.text(prefix + "DBの保存に失敗しました"));
+                        e.getWhoClicked().sendMessage(Component.text(prefix + "§cDBの保存に失敗しました"));
                         return;
                     }
                     // インベントリはメインスレッドでいじる
                     Bukkit.getScheduler().runTask(mgbar, () -> {
                         if (!vaultapi.withdraw(e.getWhoClicked().getUniqueId(), liq.price)) {
-                            e.getWhoClicked().sendMessage(Component.text(prefix + "出金に失敗しました"));
+                            e.getWhoClicked().sendMessage(Component.text(prefix + "§c出金に失敗しました"));
                             return;
                         }
                         e.getWhoClicked().getInventory().addItem(liq.GenLiquor(buy_id).clone());
-                        e.getWhoClicked().sendMessage(Component.text(prefix + "§r購入しました"));
+                        e.getWhoClicked().sendMessage(Component.text(prefix + "§r" + liq.displayName + "§rを購入しました"));
                     });
                 });
                 th.start();
@@ -289,6 +309,15 @@ public class Events implements Listener {
     public void onVillagerInteract2(PlayerInteractEntityEvent e) {
         if (!(e.getRightClicked() instanceof Villager)) return;
         Villager villager = (Villager) e.getRightClicked();
+        if (!villager.getPersistentDataContainer().has(new NamespacedKey(mgbar, "MGBarShop"))) return;
+        e.setCancelled(true);
+    }
+
+    // 村人が死ぬのを防止
+    @EventHandler
+    public void EntityDamageEvent(EntityDamageEvent e){
+        if (!(e.getEntity() instanceof Villager)) return;
+        Villager villager = (Villager) e.getEntity();
         if (!villager.getPersistentDataContainer().has(new NamespacedKey(mgbar, "MGBarShop"))) return;
         e.setCancelled(true);
     }

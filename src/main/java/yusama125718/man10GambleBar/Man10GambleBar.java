@@ -170,7 +170,7 @@ public final class Man10GambleBar extends JavaPlugin {
             List<String> lose_commands = config.getStringList("lose_commands");
             List<String> lose_messages = config.getStringList("lose_messages");
             Color color = Helper.ColorFromString(config.getString("potion_color"));
-            Boolean verify_id = config.getBoolean("verify_color");
+            Boolean verify_id = config.getBoolean("verify_id");
             Boolean record = config.getBoolean("record");
 
             // すでに存在する内部名ならエラー
@@ -264,7 +264,7 @@ public final class Man10GambleBar extends JavaPlugin {
 
     public static class Liquor{
         public String name;
-        public Component displayName;
+        public String displayName;
         public String permission;
         public String permission_error;
         public List<Component> lore;
@@ -278,7 +278,7 @@ public final class Man10GambleBar extends JavaPlugin {
 
         public Liquor(String Name, String DisplayName, String Permission, List<String> Lore, Integer Price, List<String> LoseCommands, List<String> LoseMessages, List<LiquorWin> Wins, String PermissionError, Color Col, Boolean VerifyId, Boolean Record){
             name = Name;
-            displayName = Component.text(DisplayName.replace("&", "§"));
+            displayName = DisplayName.replace("&", "§");
             permission = Permission;
             List<Component> lore_component = new ArrayList<>();
             for (String s: Lore) lore_component.add(Component.text(s.replace("&", "§")));
