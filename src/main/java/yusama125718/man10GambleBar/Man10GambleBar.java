@@ -178,7 +178,6 @@ public final class Man10GambleBar extends JavaPlugin {
             boolean record = true;
             if (config.isBoolean("record")) record = config.getBoolean("record");
             boolean hide_win_count = false;
-            if (config.isBoolean("hide_win_count")) hide_win_count = config.getBoolean("hide_win_count");
 
             // すでに存在する内部名ならエラー
             if (liquors.containsKey(name)){

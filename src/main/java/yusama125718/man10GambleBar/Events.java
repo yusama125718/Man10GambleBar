@@ -243,27 +243,17 @@ public class Events implements Listener {
                                 buy_price = set.getInt("buy_total");
                                 buy_count = set.getInt("buy_count");
                             }
-                            query = "SELECT SUM(price) AS win_total, COUNT(*) AS drink_count, COUNT(CASE WHEN win_table IS NOT NULL THEN 1 END) AS win_count FROM bar_drink_log WHERE liquor_name = '" + liq_name + "' AND uuid = '" + e.getWhoClicked().getUniqueId() + "';";
+                            query = "SELECT COUNT(*) AS drink_count FROM bar_drink_log WHERE liquor_name = '" + liq_name + "' AND uuid = '" + e.getWhoClicked().getUniqueId() + "';";
                             set = mysql.query(query);
-                            int win_price = 0;
                             int drink_count = 0;
-                            int win_count = 0;
                             if (set.next()) {
-                                win_price = set.getInt("win_total");
                                 drink_count = set.getInt("drink_count");
-                                win_count = set.getInt("win_count");
                             }
                             mysql.close();
-                            String win_str = String.valueOf(win_count);
-                            String win_price_str = String.valueOf(win_price);
-                            if (liq.hide_win_count) {
-                                win_str = "**";
-                                win_price_str = "****";
-                            }
                             e.getWhoClicked().sendMessage(Component.text(prefix + "===== 個人ログ ====="));
                             e.getWhoClicked().sendMessage(liq.displayName);
                             e.getWhoClicked().sendMessage(Component.text("購入数：" + buy_count + "本（総額：" + buy_price + "）"));
-                            e.getWhoClicked().sendMessage(Component.text("飲んだ本数：" + drink_count + "本うち" + win_str + "が当選（総額：" + win_price_str + "）"));
+                            e.getWhoClicked().sendMessage(Component.text("飲んだ本数：" + drink_count + "本"));
                         } catch (SQLException error) {
                             e.getWhoClicked().sendMessage(Component.text(prefix + "DBの参照に失敗しました"));
                             try {

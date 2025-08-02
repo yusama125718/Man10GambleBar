@@ -66,9 +66,7 @@ public class Helper {
                 p.sendMessage(liq.displayName);
                 int cnt = 1;
                 while (set.next()){
-                    String win_count = String.valueOf(set.getInt("win_count"));
-                    if (liq.hide_win_count) win_count = "**";
-                    p.sendMessage(Component.text("§e§l" + ((page - 1) * 10) + cnt + "位：§c§l" + set.getString("mcid") + "§r§f  " + set.getInt("drink_count") + "本（うち" + win_count + "本当選）"));
+                    p.sendMessage(Component.text("§e§l" + ((page - 1) * 10) + cnt + "位：§c§l" + set.getString("mcid") + "§r§f  " + set.getInt("drink_count") + "本"));
                     cnt++;
                 }
                 if (page != 1) p.sendMessage(Component.text("§b§l§n[前のページ]").clickEvent(runCommand("/mgbar rank " + liq.name + " " + (page - 1))));
