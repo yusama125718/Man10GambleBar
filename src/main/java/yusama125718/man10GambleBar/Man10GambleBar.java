@@ -154,7 +154,7 @@ public final class Man10GambleBar extends JavaPlugin {
         load_file: for (File file : liquor_folder.listFiles()) {
             YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
             // 値チェック
-            if (!config.isString("name") || !config.isString("permission") || !config.isInt("price") || !config.isString("display_name") || !config.isList("lore") || !config.isList("lose_commands") || !config.isList("lose_messages") || !config.isString("potion_color") || !config.isString("permission_error") || !config.isBoolean("verify_id")) {
+            if (!config.isString("name") || !config.isString("permission") || !config.isInt("price") || !config.isString("display_name") || !config.isList("lore") || !config.isList("lose_commands") || !config.isList("lose_messages") || !config.isString("potion_color") || !config.isString("permission_error")) {
                 Bukkit.broadcast(Component.text(prefix + file.getName() + "の読み込みに失敗しました"), "mgbar.op");
                 Bukkit.broadcast(Component.text(prefix + "不足している項目があります"), "mgbar.op");
                 continue;
@@ -173,8 +173,12 @@ public final class Man10GambleBar extends JavaPlugin {
             List<String> lose_commands = config.getStringList("lose_commands");
             List<String> lose_messages = config.getStringList("lose_messages");
             Color color = Helper.ColorFromString(config.getString("potion_color"));
-            Boolean verify_id = config.getBoolean("verify_id");
-            Boolean record = config.getBoolean("record");
+            boolean verify_id = true;
+            if (config.isBoolean("verify_id")) verify_id = config.getBoolean("verify_id");
+            boolean record = true;
+            if (config.isBoolean("record")) record = config.getBoolean("record");
+            boolean hide_win_count = false;
+            if (config.isBoolean("hide_win_count")) hide_win_count = config.getBoolean("hide_win_count");
 
             // すでに存在する内部名ならエラー
             if (liquors.containsKey(name)){
@@ -221,7 +225,7 @@ public final class Man10GambleBar extends JavaPlugin {
                 Bukkit.broadcast(Component.text(prefix + "お酒の当選リストがありません"), "mgbar.op");
                 continue;
             }
-            liquors.put(name, new Liquor(name, display_name, permission, lore, price, lose_commands, lose_messages, wins, permission_error, color, verify_id, record));
+            liquors.put(name, new Liquor(name, display_name, permission, lore, price, lose_commands, lose_messages, wins, permission_error, color, verify_id, record, hide_win_count));
         }
     }
 
@@ -278,8 +282,9 @@ public final class Man10GambleBar extends JavaPlugin {
         public Color color;
         public Boolean verify_id;
         public Boolean record;
+        public Boolean hide_win_count;
 
-        public Liquor(String Name, String DisplayName, String Permission, List<String> Lore, Integer Price, List<String> LoseCommands, List<String> LoseMessages, List<LiquorWin> Wins, String PermissionError, Color Col, Boolean VerifyId, Boolean Record){
+        public Liquor(String Name, String DisplayName, String Permission, List<String> Lore, Integer Price, List<String> LoseCommands, List<String> LoseMessages, List<LiquorWin> Wins, String PermissionError, Color Col, Boolean VerifyId, Boolean Record, Boolean HideWinCount){
             name = Name;
             displayName = DisplayName.replace("&", "§");
             permission = Permission;
@@ -294,6 +299,7 @@ public final class Man10GambleBar extends JavaPlugin {
             color = Col;
             verify_id = VerifyId;
             record = Record;
+            hide_win_count = HideWinCount;
         }
 
         public ItemStack GenLiquor(UUID buy_id){

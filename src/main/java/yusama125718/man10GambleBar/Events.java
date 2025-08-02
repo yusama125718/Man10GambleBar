@@ -254,10 +254,16 @@ public class Events implements Listener {
                                 win_count = set.getInt("win_count");
                             }
                             mysql.close();
+                            String win_str = String.valueOf(win_count);
+                            String win_price_str = String.valueOf(win_price);
+                            if (liq.hide_win_count) {
+                                win_str = "**";
+                                win_price_str = "****";
+                            }
                             e.getWhoClicked().sendMessage(Component.text(prefix + "===== 個人ログ ====="));
                             e.getWhoClicked().sendMessage(liq.displayName);
                             e.getWhoClicked().sendMessage(Component.text("購入数：" + buy_count + "本（総額：" + buy_price + "）"));
-                            e.getWhoClicked().sendMessage(Component.text("飲んだ本数：" + drink_count + "本うち" + win_count + "が当選（総額：" + win_price + "）"));
+                            e.getWhoClicked().sendMessage(Component.text("飲んだ本数：" + drink_count + "本うち" + win_str + "が当選（総額：" + win_price_str + "）"));
                         } catch (SQLException error) {
                             e.getWhoClicked().sendMessage(Component.text(prefix + "DBの参照に失敗しました"));
                             try {
