@@ -66,7 +66,7 @@ public final class Man10GambleBar extends JavaPlugin {
                 if (make_liquor && file.getName().equals("liquors")) {
                     liquor_folder = file;
                     make_liquor = false;
-                    GetLiquors();
+                    GetLiquors(liquor_folder.listFiles());
                 }
             }
         }
@@ -148,10 +148,11 @@ public final class Man10GambleBar extends JavaPlugin {
         }
     }
 
-    public static void GetLiquors(){
+    public static void GetLiquors(File[] files){
         liquors = new LinkedHashMap<>();
         if (liquor_folder.listFiles() == null) return;
-        load_file: for (File file : liquor_folder.listFiles()) {
+        load_file: for (File file : files) {
+            if (file.isDirectory()) GetLiquors(file.listFiles());
             YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
             // 値チェック
             if (!config.isString("name") || !config.isString("permission") || !config.isInt("price") || !config.isString("display_name") || !config.isList("lore") || !config.isList("lose_commands") || !config.isList("lose_messages") || !config.isString("potion_color") || !config.isString("permission_error")) {
