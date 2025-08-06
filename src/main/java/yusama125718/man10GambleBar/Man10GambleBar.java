@@ -41,7 +41,7 @@ public final class Man10GambleBar extends JavaPlugin {
         Thread th = new Thread(() -> {
             mysql = new MySQLManager(mgbar, "man10_gamble_bar");
             mysql.execute("create table if not exists bar_shop_log(id int auto_increment,time datetime,liquor_name varchar(20),mcid varchar(16),uuid varchar(36),price integer,buy_id varchar(36),primary key(id))");
-            mysql.execute("create table if not exists bar_drink_log(id int auto_increment,time datetime,liquor_name varchar(20),mcid varchar(16),uuid varchar(36),price integer,buy_id varchar(36),win_table varchar(20),primary key(id))");
+            mysql.execute("create table if not exists bar_drink_log(id int auto_increment,time datetime,liquor_name varchar(20),mcid varchar(16),uuid varchar(36),price integer,buy_id varchar(36),win_table varchar(50),primary key(id))");
         });
         th.start();
         vaultapi = new VaultAPI();
