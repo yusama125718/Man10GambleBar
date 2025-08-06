@@ -3,22 +3,30 @@ package yusama125718.man10GambleBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static yusama125718.man10GambleBar.Man10GambleBar.liquors;
+import static yusama125718.man10GambleBar.Man10GambleBar.mgbar;
 
 public class GUI {
 
     public static void OpenRecordMenu(Player p, int page){
         p.closeInventory();
         Inventory inv = Bukkit.createInventory(null,54, Component.text("[Man10GambleBar] 記録メニュー"));
+        ItemStack white = Helper.GetItem(Material.WHITE_STAINED_GLASS_PANE, String.valueOf(page), 1);
+        ItemMeta meta = white.getItemMeta();
+        meta.getPersistentDataContainer().set(new NamespacedKey(mgbar, "MGBarPage"), PersistentDataType.INTEGER, page);
         for (int i = 51; i < 54; i++){
             inv.setItem(i,Helper.GetItem(Material.BLUE_STAINED_GLASS_PANE, "次のページへ",1));
-            inv.setItem(i - 3,Helper.GetItem(Material.WHITE_STAINED_GLASS_PANE, "",1));
+            inv.setItem(i - 3, white);
             inv.setItem(i - 6,Helper.GetItem(Material.RED_STAINED_GLASS_PANE, "前のページへ",1));
         }
         int cnt = 0;

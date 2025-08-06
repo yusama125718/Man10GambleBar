@@ -208,9 +208,22 @@ public class Events implements Listener {
                 th.start();
             }
             case "記録メニュー" -> {
+                int page = 0;
+                ItemStack page_item = e.getInventory().getItem(49);
+                if (page_item != null && page_item.hasItemMeta() && page_item.getItemMeta().getPersistentDataContainer().has(new NamespacedKey(mgbar, "MGBarPage"), PersistentDataType.INTEGER)){
+                    page = page_item.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(mgbar, "MGBarPage"), PersistentDataType.INTEGER);
+                }
                 // 前のページ
                 if (45 <= e.getRawSlot() && e.getRawSlot() <= 47){
-
+                    if (page <= 1) return;
+                    GUI.OpenRecordMenu((Player) e.getWhoClicked(), page - 1);
+                    return;
+                }
+                // 次のページ
+                else if (51 <= e.getRawSlot() && e.getRawSlot() <= 54){
+                    if (page <= 1 || page >= liquors.size() / 9 + 1) return;
+                    GUI.OpenRecordMenu((Player) e.getWhoClicked(), page + 1);
+                    return;
                 }
                 if (e.getCurrentItem() == null || !e.getCurrentItem().hasItemMeta() || !e.getCurrentItem().getItemMeta().getPersistentDataContainer().has(new NamespacedKey(mgbar, "Man10GambleBar"), PersistentDataType.STRING))
                     return;
