@@ -50,6 +50,8 @@ public final class Man10GambleBar extends JavaPlugin {
     public static void SetupPL(){
         remove_players = new ArrayList<>();
         disable_worlds = new ArrayList<>();
+        liquors = new LinkedHashMap<>();
+        shops = new HashMap<>();
         prefix = mgbar.getConfig().getString("prefix") + "§r";
         system = mgbar.getConfig().getBoolean("system");
         disable_worlds = mgbar.getConfig().getStringList("disable_worlds");
@@ -95,7 +97,6 @@ public final class Man10GambleBar extends JavaPlugin {
     }
 
     private static void GetShops(){
-        shops = new HashMap<>();
         if (shop_folder.listFiles() == null) return;
         load_file: for (File file : shop_folder.listFiles()){
             YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
@@ -149,10 +150,12 @@ public final class Man10GambleBar extends JavaPlugin {
     }
 
     public static void GetLiquors(File[] files){
-        liquors = new LinkedHashMap<>();
         if (liquor_folder.listFiles() == null) return;
         load_file: for (File file : files) {
-            if (file.isDirectory()) GetLiquors(file.listFiles());
+            if (file.isDirectory()) {
+                GetLiquors(file.listFiles());
+                continue;
+            }
             YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
             // 値チェック
             if (!config.isString("name") || !config.isString("permission") || !config.isInt("price") || !config.isString("display_name") || !config.isList("lore") || !config.isList("lose_commands") || !config.isList("lose_messages") || !config.isString("potion_color") || !config.isString("permission_error")) {

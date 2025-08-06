@@ -69,6 +69,8 @@ public class Commands implements CommandExecutor, TabCompleter {
                 }
                 if (args[0].equals("reload") && sender.hasPermission("mgbar.op")){
                     system = false;
+                    liquors = new LinkedHashMap<>();
+                    shops = new HashMap<>();
                     SetupPL();
                     sender.sendMessage(prefix + "§f設定を再読み込みしました");
                     return true;
@@ -247,13 +249,13 @@ public class Commands implements CommandExecutor, TabCompleter {
                     else if ("record".startsWith(args[0])) {
                         return Collections.singletonList("record");
                     }
-                    else if ("protect".startsWith(args[0])) {
+                    else if ("reload".startsWith(args[0])) {
                         return Collections.singletonList("reload");
                     }
                     else if ("recipe".startsWith(args[0])) {
                         return Collections.singletonList("remove");
                     }
-                    else if ("reload".startsWith(args[0])) {
+                    else if ("spawn".startsWith(args[0])) {
                         return Collections.singletonList("spawn");
                     }
                     else if ("world".startsWith(args[0])) {
