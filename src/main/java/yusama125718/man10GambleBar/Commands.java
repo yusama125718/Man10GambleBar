@@ -156,6 +156,7 @@ public class Commands implements CommandExecutor, TabCompleter {
 
                     // DB処理はスレッドで行う
                     Thread th = new Thread(() -> {
+                        MySQLManager mysql = new MySQLManager(mgbar, "man10_token");
                         String query = "INSERT INTO bar_shop_log (time, liquor_name, mcid, uuid, price, buy_id) VALUES ('" + LocalDateTime.now() + "', '" + liq.name + "', '" + mcid + "', '" + uuid + "', 0, '" + buy_id + "')";
                         if (!mysql.execute(query)) {
                             sender.sendMessage(Component.text(prefix + "§cDBの保存に失敗しました"));

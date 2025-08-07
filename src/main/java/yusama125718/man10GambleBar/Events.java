@@ -85,6 +85,7 @@ public class Events implements Listener {
             }
             // DB処理はスレッドで行う
             Thread th = new Thread(() -> {
+                MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
                 // 検証
                 if (liq.verify_id){
                     try {
@@ -188,6 +189,7 @@ public class Events implements Listener {
 
                 // DB処理はスレッドで行う
                 Thread th = new Thread(() -> {
+                    MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
                     String query = "INSERT INTO bar_shop_log (time, liquor_name, mcid, uuid, price, buy_id) VALUES ('" + LocalDateTime.now() + "', '" + liq.name + "', '" + mcid + "', '" + uuid + "', " + liq.price + ", '" + buy_id + "')";
                     if (!mysql.execute(query)) {
                         e.getWhoClicked().sendMessage(Component.text(prefix + "§cDBの保存に失敗しました"));
@@ -243,6 +245,7 @@ public class Events implements Listener {
                     e.getWhoClicked().closeInventory();
                     // DB処理はスレッドで行う
                     Thread th = new Thread(() -> {
+                        MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
                         try {
                             // 使用可能か確認
                             String query = "SELECT SUM(price) AS buy_total, COUNT(*) AS buy_count FROM bar_shop_log WHERE liquor_name = '" + liq_name + "' AND uuid = '" + e.getWhoClicked().getUniqueId() + "' AND price <> 0;";
