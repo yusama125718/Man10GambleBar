@@ -60,4 +60,11 @@ public class GUI {
         inv.setItem(6, Helper.GetItem(Material.WRITABLE_BOOK, "ランキングを見る", 0));
         p.openInventory(inv);
     }
+
+    public static void OpenResale(Player p){
+        p.closeInventory();
+        Inventory inv = Bukkit.createInventory(null, 9, Component.text("[Man10GambleBar] 売却画面"));
+        inv.setItem(4, Helper.GetItem(Material.EMERALD, "売りたいお酒をクリックしてください", 0));
+        p.openInventory(inv);
+    }
 }

@@ -287,6 +287,64 @@ public class Events implements Listener {
                     return;
                 }
             }
+            case "売却画面" -> {
+                if (e.getCurrentItem() == null || !e.getCurrentItem().hasItemMeta() || !e.getCurrentItem().getItemMeta().getPersistentDataContainer().has(new NamespacedKey(mgbar, "Man10GambleBar"), PersistentDataType.STRING))
+                    return;
+                String liq_name = e.getCurrentItem().getItemMeta().getPersistentDataContainer().get(new NamespacedKey(mgbar, "Man10GambleBar"), PersistentDataType.STRING);
+                String buy_id = e.getCurrentItem().getItemMeta().getPersistentDataContainer().get(new NamespacedKey(mgbar, "MGBarID"), PersistentDataType.STRING);
+                if (!liquors.containsKey(liq_name)) return;
+                Liquor liq = liquors.get(liq_name);
+                if (liq.resale_price == 0){
+                    e.getWhoClicked().closeInventory();
+                    e.getWhoClicked().sendMessage(Component.text(prefix + "§cそのお酒は売れません"));
+                    return;
+                }
+                // DB処理はスレッドで行う
+                Thread th = new Thread(() -> {
+                    MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
+                    // 検証
+                    if (liq.verify_id){
+                        try {
+                            // 使用可能か確認
+                            String query = "SELECT * FROM bar_shop_log LEFT OUTER JOIN bar_drink_log ON bar_shop_log.buy_id = bar_drink_log.buy_id WHERE bar_shop_log.buy_id = '" + buy_id + "' AND bar_drink_log.id IS NULL";
+                            ResultSet set = mysql.query(query);
+                            if (!set.next()) {
+                                e.getWhoClicked().sendMessage(Component.text(prefix + "§cこのお酒は有効でないので使用できません"));
+                                e.getWhoClicked().getInventory().removeItemAnySlot(e.getCurrentItem());
+                                mysql.close();
+                                return;
+                            }
+                            mysql.close();
+                        } catch (SQLException error) {
+                            e.getWhoClicked().sendMessage(Component.text(prefix + "§cDBの参照に失敗しました"));
+                            try {
+                                mysql.close();
+                            } catch (NullPointerException throwables) {
+                                throwables.printStackTrace();
+                            }
+                            throw new RuntimeException(error);
+                        }
+                    }
+                    // アイテム回収
+                    e.getWhoClicked().getInventory().removeItemAnySlot(e.getCurrentItem());
+
+                    // ログ保存
+                    String win_name = "sale:" + liq.name;
+                    String query = "INSERT INTO bar_drink_log (time, liquor_name, mcid, uuid, price, buy_id, win_table) VALUES ('" + LocalDateTime.now() + "', '" + liq.name + "', '" + e.getWhoClicked().getName() + "', '" + e.getWhoClicked().getUniqueId() + "', " + liq.resale_price + ", '" + buy_id + "', '" + win_name + "');";
+                    if (!mysql.execute(query)){
+                        e.getWhoClicked().sendMessage(Component.text(prefix + "§cDBの保存に失敗しました"));
+                        try {
+                            mysql.close();
+                        } catch (NullPointerException throwables) {
+                            throwables.printStackTrace();
+                        }
+                        return;
+                    }
+                    vaultapi.deposit(e.getWhoClicked().getUniqueId(), liq.resale_price);
+                    e.getWhoClicked().sendMessage(prefix + "§e売却しました");
+                });
+                th.start();
+            }
         }
     }
 

@@ -30,6 +30,9 @@ verify_id: true
 # 記録を参照できるようにするか
 # 隠し要素にしたい場合はOFF推奨
 record: true
+# そのお酒を売れるようにしたい場合は設定する
+# 0で売却不可
+resale_price: 0
 # 当たり一覧
 wins:
     # 内部名

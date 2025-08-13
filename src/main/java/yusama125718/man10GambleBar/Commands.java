@@ -31,6 +31,7 @@ public class Commands implements CommandExecutor, TabCompleter {
             case 1:
                 if (args[0].equals("help")){
                     sender.sendMessage(prefix + "§7/mgbar record §f§l: 記録メニューを開きます");
+                    sender.sendMessage(prefix + "§7/mgbar resale §f§l: 売却メニューを開きます");
                     if (sender.hasPermission("mgbar.op")){
                         sender.sendMessage(prefix + "§l===== 管理者コマンド =====");
                         sender.sendMessage(prefix + "§7/mgbar open [バーの名前] §f§l: バーカウンターを開きます");
@@ -109,6 +110,14 @@ public class Commands implements CommandExecutor, TabCompleter {
                     }
                     mgbar.getConfig().set("disable_worlds", disable_worlds);
                     mgbar.saveConfig();
+                    return true;
+                }
+                if (args[0].equals("resale")){
+                    if (!system){
+                        sender.sendMessage(prefix + "§cシステムはすでに無効です");
+                        return true;
+                    }
+                    GUI.OpenResale((Player) sender);
                     return true;
                 }
                 break;
@@ -218,13 +227,19 @@ public class Commands implements CommandExecutor, TabCompleter {
         if (args.length == 1){
             if (args[0].isEmpty())
             {
-                if (sender.hasPermission("mgbar.op")) return Arrays.asList("give","off","on","open","record","reload","remove","spawn", "world");
+                if (sender.hasPermission("mgbar.op")) return Arrays.asList("give","off","on","open","record","reload","remove","resale","spawn", "world");
                 else return Collections.singletonList("record");
             }
             else{
                 if (!sender.hasPermission("mgbar.op")){
-                    if ("record".startsWith(args[0])) {
+                    if ("record".startsWith(args[0]) && "resale".startsWith(args[0])) {
+                        return Arrays.asList("record", "resale");
+                    }
+                    else if ("record".startsWith(args[0])) {
                         return Collections.singletonList("record");
+                    }
+                    else if ("resale".startsWith(args[0])) {
+                        return Collections.singletonList("resale");
                     }
                 }
                 else {
@@ -243,8 +258,8 @@ public class Commands implements CommandExecutor, TabCompleter {
                     else if ("open".startsWith(args[0])) {
                         return Collections.singletonList("open");
                     }
-                    else if ("record".startsWith(args[0]) && "reload".startsWith(args[0]) && "remove".startsWith(args[0])) {
-                        return Arrays.asList("record", "reload", "remove");
+                    else if ("record".startsWith(args[0]) && "reload".startsWith(args[0]) && "remove".startsWith(args[0]) && ("resale").startsWith(args[0])) {
+                        return Arrays.asList("record", "reload", "remove", "resale");
                     }
                     else if ("record".startsWith(args[0])) {
                         return Collections.singletonList("record");
@@ -254,6 +269,9 @@ public class Commands implements CommandExecutor, TabCompleter {
                     }
                     else if ("recipe".startsWith(args[0])) {
                         return Collections.singletonList("remove");
+                    }
+                    else if ("resale".startsWith(args[0])) {
+                        return Collections.singletonList("resale");
                     }
                     else if ("spawn".startsWith(args[0])) {
                         return Collections.singletonList("spawn");

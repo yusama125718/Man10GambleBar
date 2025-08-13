@@ -182,6 +182,8 @@ public final class Man10GambleBar extends JavaPlugin {
             boolean record = true;
             if (config.isBoolean("record")) record = config.getBoolean("record");
             boolean hide_win_count = false;
+            double resale_price = 0;
+            if (config.isInt("resale_price")) resale_price = config.getDouble("resale_price");
 
             // すでに存在する内部名ならエラー
             if (liquors.containsKey(name)){
@@ -228,7 +230,7 @@ public final class Man10GambleBar extends JavaPlugin {
                 Bukkit.broadcast(Component.text(prefix + "お酒の当選リストがありません"), "mgbar.op");
                 continue;
             }
-            liquors.put(name, new Liquor(name, display_name, permission, lore, price, lose_commands, lose_messages, wins, permission_error, color, verify_id, record, hide_win_count));
+            liquors.put(name, new Liquor(name, display_name, permission, lore, price, lose_commands, lose_messages, wins, permission_error, color, verify_id, record, hide_win_count, resale_price));
         }
     }
 
@@ -279,6 +281,7 @@ public final class Man10GambleBar extends JavaPlugin {
         public String permission_error;
         public List<Component> lore;
         public Integer price;
+        public double resale_price;
         public List<String> lose_commands;
         public List<String> lose_messages;
         public List<LiquorWin> wins;
@@ -287,7 +290,7 @@ public final class Man10GambleBar extends JavaPlugin {
         public Boolean record;
         public Boolean hide_win_count;
 
-        public Liquor(String Name, String DisplayName, String Permission, List<String> Lore, Integer Price, List<String> LoseCommands, List<String> LoseMessages, List<LiquorWin> Wins, String PermissionError, Color Col, Boolean VerifyId, Boolean Record, Boolean HideWinCount){
+        public Liquor(String Name, String DisplayName, String Permission, List<String> Lore, Integer Price, List<String> LoseCommands, List<String> LoseMessages, List<LiquorWin> Wins, String PermissionError, Color Col, Boolean VerifyId, Boolean Record, Boolean HideWinCount, double ResalePrice){
             name = Name;
             displayName = DisplayName.replace("&", "§");
             permission = Permission;
@@ -303,6 +306,7 @@ public final class Man10GambleBar extends JavaPlugin {
             verify_id = VerifyId;
             record = Record;
             hide_win_count = HideWinCount;
+            resale_price = ResalePrice;
         }
 
         public ItemStack GenLiquor(UUID buy_id){
