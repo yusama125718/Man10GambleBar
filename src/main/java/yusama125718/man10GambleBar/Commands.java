@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static yusama125718.man10GambleBar.Helper.CheckSystem;
 import static yusama125718.man10GambleBar.Man10GambleBar.*;
@@ -43,6 +44,7 @@ public class Commands implements CommandExecutor, TabCompleter {
                         sender.sendMessage(prefix + "§7/mgbar give [MCID] [お酒の内部名] §f§l: 指定したプレイヤーにお酒を付与します");
                         sender.sendMessage(prefix + "§7/mgbar counters §f§l: バーの一覧を表示します");
                         sender.sendMessage(prefix + "§7/mgbar world §f§l: 無効化するワールドに今いるワールドを追加します※追加済みの場合は削除します");
+                        sender.sendMessage(prefix + "§7/mgbar simulate [お酒の内部名] [回数] §f§l: 指定回数お酒の抽選を実施し、結果を表示します");
                     }
                     return true;
                 }
@@ -213,6 +215,54 @@ public class Commands implements CommandExecutor, TabCompleter {
                     sender.sendMessage(prefix + "§e§lバーテンダーを配置しました");
                     return true;
                 }
+                if (args[0].equals("simulate") && sender.hasPermission("mgbar.op")){
+                    if (!liquors.containsKey(args[1])){
+                        sender.sendMessage(prefix + "§cその名前のお酒はありません");
+                        return true;
+                    }
+                    if (!args[2].matches("-?\\d+")){
+                        sender.sendMessage(prefix + "§c回数は数字で入力してください");
+                        return true;
+                    }
+                    if (args[2].length() >= 10){
+                        sender.sendMessage(prefix + "§c回数は10億回未満にしてください");
+                        return true;
+                    }
+                    int times = Integer.parseInt(args[2]);
+                    if (times < 1){
+                        sender.sendMessage(prefix + "§c回数は1以上で入力してください");
+                        return true;
+                    }
+                    Thread th = new Thread(() -> {
+                        Map<String, Integer> win_count = new HashMap<>();
+                        Liquor liq = liquors.get(args[1]);
+                        for (int i = 0; i < times; i++){
+                            int randomInt = ThreadLocalRandom.current().nextInt(0, 100000000);
+                            boolean win = false;
+                            for (LiquorWin table: liq.wins) {
+                                if (randomInt < table.chance) {
+                                    int cnt = 1;
+                                    if (win_count.containsKey(table.name)) cnt += win_count.get(table.name);
+                                    win_count.put(table.name, cnt);
+                                    win = true;
+                                    break;
+                                }
+                                randomInt -= table.chance;
+                            }
+                            if (!win){
+                                int cnt = 1;
+                                if (win_count.containsKey("None")) cnt += win_count.get("None");
+                                win_count.put("None", cnt);
+                            }
+                        }
+                        sender.sendMessage(prefix + liq.name + "シミュレート結果");
+                        for (String name : win_count.keySet()){
+                            sender.sendMessage(name + ":" + win_count.get(name) + "回(" + (float) win_count.get(name) / (float) times * 100 + "%)");
+                        }
+                    });
+                    th.start();
+                    return true;
+                }
                 break;
         }
 
@@ -227,7 +277,7 @@ public class Commands implements CommandExecutor, TabCompleter {
         if (args.length == 1){
             if (args[0].isEmpty())
             {
-                if (sender.hasPermission("mgbar.op")) return Arrays.asList("give","off","on","open","record","reload","remove","resale","spawn", "world");
+                if (sender.hasPermission("mgbar.op")) return Arrays.asList("give","off","on","open","record","reload","remove","resale","spawn", "simulate", "world");
                 else return Collections.singletonList("record");
             }
             else{
@@ -276,6 +326,9 @@ public class Commands implements CommandExecutor, TabCompleter {
                     else if ("spawn".startsWith(args[0])) {
                         return Collections.singletonList("spawn");
                     }
+                    else if ("simulate".startsWith(args[0])) {
+                        return Collections.singletonList("simulate");
+                    }
                     else if ("world".startsWith(args[0])) {
                         return Collections.singletonList("world");
                     }
@@ -299,6 +352,11 @@ public class Commands implements CommandExecutor, TabCompleter {
                 for (Shop s : shops.values()) returnlist.add(s.name);
                 return returnlist;
             }
+            else if (args[0].equals("simulate")){
+                List<String> returnlist = new ArrayList<>();
+                for (Liquor l : liquors.values()) returnlist.add(l.name);
+                return returnlist;
+            }
         }
         else if (args.length == 3 && sender.hasPermission("mgbar.op")){
             if (args[0].equals("rank")){
@@ -313,6 +371,9 @@ public class Commands implements CommandExecutor, TabCompleter {
                 List<String> returnlist = new ArrayList<>();
                 for (Liquor l : liquors.values()) returnlist.add(l.name);
                 return returnlist;
+            }
+            else if (args[0].equals("simulate")){
+                return Collections.singletonList("[回数]");
             }
         }
         return null;
