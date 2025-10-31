@@ -56,6 +56,10 @@ public final class Man10GambleBar extends JavaPlugin {
             getLogger().severe("Failed to initialize schema.");
             getLogger().severe(ExceptionUtils.getFullStackTrace(e));
             getServer().getPluginManager().disablePlugin(this);
+        } catch (Exception e) {
+            getLogger().severe("Unknown error has occurred during connecting to " + mysql.getJdbcUrl() + ".");
+            getLogger().severe(ExceptionUtils.getFullStackTrace(e));
+            getServer().getPluginManager().disablePlugin(this);
         }
         vaultapi = new VaultAPI();
         SetupPL();
@@ -65,7 +69,7 @@ public final class Man10GambleBar extends JavaPlugin {
         HikariConfig cfg = new HikariConfig();
         cfg.setJdbcUrl(mgbar.getConfig().getString("mysql.url"));
         cfg.setUsername(mgbar.getConfig().getString("mysql.user"));
-        cfg.setPassword(mgbar.getConfig().getString("mysql.password"));
+        cfg.setPassword(mgbar.getConfig().getString("mysql.pass"));
         cfg.setMaximumPoolSize(10);
         cfg.setMinimumIdle(2);
         cfg.setConnectionTimeout(10_000);
