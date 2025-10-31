@@ -14,6 +14,8 @@
     <properties>
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <hikari.ver>7.0.2</hikari.ver>
+        <mysql.ver>9.5.0</mysql.ver>
     </properties>
 
     <build>
@@ -77,6 +79,16 @@
             <artifactId>VaultAPI</artifactId>
             <version>1.7</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>${hikari.ver}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>${mysql.ver}</version>
         </dependency>
     </dependencies>
 </project>

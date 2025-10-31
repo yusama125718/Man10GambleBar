@@ -5,8 +5,6 @@ import net.kyori.adventure.text.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
@@ -18,14 +16,16 @@ import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -76,36 +76,27 @@ public class Events implements Listener {
                 break;
             }
 
-            try {
-                // UUIDが正しい形式か確認（SQLインジェクション対策）
-                UUID.fromString(buy_id);
-            } catch (IllegalArgumentException error) {
-                e.getPlayer().sendMessage(Component.text(prefix + "§c不正なお酒を検知しました"));
-                return;
-            }
+            Player player = e.getPlayer();
             // DB処理はスレッドで行う
             Thread th = new Thread(() -> {
-                MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
-                // 検証
                 if (liq.verify_id){
-                    try {
-                        // 使用可能か確認
-                        String query = "SELECT * FROM bar_shop_log LEFT OUTER JOIN bar_drink_log ON bar_shop_log.buy_id = bar_drink_log.buy_id WHERE bar_shop_log.buy_id = '" + buy_id + "' AND bar_drink_log.id IS NULL";
-                        ResultSet set = mysql.query(query);
-                        if (!set.next()) {
-                            e.getPlayer().sendMessage(Component.text(prefix + "§cこのお酒は有効でないので使用できません"));
-                            mysql.close();
-                            return;
+                    try (Connection c = mysql.getConnection();
+                         PreparedStatement ps = c.prepareStatement(
+                             "SELECT 1 FROM bar_shop_log LEFT OUTER JOIN bar_drink_log ON bar_shop_log.buy_id = bar_drink_log.buy_id WHERE bar_shop_log.buy_id = ? AND bar_drink_log.id IS NULL"
+                         )
+                    ) {
+                        ps.setString(1, buy_id);
+                        try (ResultSet set = ps.executeQuery()) {
+                            if (!set.next()) {
+                                Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cこのお酒は有効でないので使用できません")));
+                                return;
+                            }
                         }
-                        mysql.close();
                     } catch (SQLException error) {
-                        e.getPlayer().sendMessage(Component.text(prefix + "§cDBの参照に失敗しました"));
-                        try {
-                            mysql.close();
-                        } catch (NullPointerException throwables) {
-                            throwables.printStackTrace();
-                        }
-                        throw new RuntimeException(error);
+                        Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの参照に失敗しました")));
+                        mgbar.getLogger().severe("Failed to verify buy_id: " + buy_id);
+                        mgbar.getLogger().severe(error.getMessage());
+                        return;
                     }
                 }
                 LiquorWin win = null;
@@ -118,18 +109,29 @@ public class Events implements Listener {
                     }
                     randomInt -= table.chance;
                 }
-
                 // ログ保存
-                String win_name = win == null ? "NULL" : "'" + win.name + "'";
                 int price = win == null ? 0 : win.price;
-                String query = "INSERT INTO bar_drink_log (time, liquor_name, mcid, uuid, price, buy_id, win_table) VALUES ('" + LocalDateTime.now() + "', '" + liq.name + "', '" + e.getPlayer().getName() + "', '" + e.getPlayer().getUniqueId() + "', " + price + ", '" + buy_id + "', " + win_name + ");";
-                if (!mysql.execute(query)){
-                    e.getPlayer().sendMessage(Component.text(prefix + "§cDBの保存に失敗しました"));
-                    try {
-                        mysql.close();
-                    } catch (NullPointerException throwables) {
-                        throwables.printStackTrace();
+                try (Connection c = mysql.getConnection();
+                     PreparedStatement ps = c.prepareStatement(
+                         "INSERT INTO bar_drink_log (time, liquor_name, mcid, uuid, price, buy_id, win_table) VALUES (?, ?, ?, ?, ?, ?, ?)"
+                     )
+                ) {
+                    ps.setObject(1, LocalDateTime.now());
+                    ps.setString(2, liq.name);
+                    ps.setString(3, player.getName());
+                    ps.setString(4, player.getUniqueId().toString());
+                    ps.setInt(5, price);
+                    ps.setString(6, buy_id);
+                    if (win == null) {
+                        ps.setNull(7, Types.VARCHAR);
+                    } else {
+                        ps.setString(7, win.name);
                     }
+                    ps.executeUpdate();
+                } catch (SQLException error) {
+                    Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの保存に失敗しました")));
+                    mgbar.getLogger().severe("Failed to insert bar_drink_log for buy_id: " + buy_id);
+                    mgbar.getLogger().severe(error.getMessage());
                     return;
                 }
                 LiquorWin finalWin = win;
@@ -184,35 +186,38 @@ public class Events implements Listener {
                     return;
                 }
                 UUID buy_id = UUID.randomUUID();
-                String mcid = e.getWhoClicked().getName();
-                String uuid = e.getWhoClicked().getUniqueId().toString();
+                Player player = (Player) e.getWhoClicked();
+                String mcid = player.getName();
+                String uuid = player.getUniqueId().toString();
 
                 // DB処理はスレッドで行う
                 Thread th = new Thread(() -> {
-                    MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
-                    String query = "INSERT INTO bar_shop_log (time, liquor_name, mcid, uuid, price, buy_id) VALUES ('" + LocalDateTime.now() + "', '" + liq.name + "', '" + mcid + "', '" + uuid + "', " + liq.price + ", '" + buy_id + "')";
-                    if (!mysql.execute(query)) {
-                        e.getWhoClicked().sendMessage(Component.text(prefix + "§cDBの保存に失敗しました"));
+                    try (Connection c = mysql.getConnection();
+                         PreparedStatement ps = c.prepareStatement(
+                             "INSERT INTO bar_shop_log (time, liquor_name, mcid, uuid, price, buy_id) VALUES (?, ?, ?, ?, ?, ?)"
+                         )
+                    ) {
+                        ps.setObject(1, LocalDateTime.now());
+                        ps.setString(2, liq.name);
+                        ps.setString(3, mcid);
+                        ps.setString(4, uuid);
+                        ps.setInt(5, liq.price);
+                        ps.setString(6, buy_id.toString());
+                        ps.executeUpdate();
+                    } catch (SQLException error) {
+                        Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの保存に失敗しました")));
+                        mgbar.getLogger().severe("Failed to insert bar_shop_log for buy_id: " + buy_id);
+                        mgbar.getLogger().severe(error.getMessage());
                         return;
                     }
                     // インベントリはメインスレッドでいじる
                     Bukkit.getScheduler().runTask(mgbar, () -> {
-                        if (!vaultapi.withdraw(e.getWhoClicked().getUniqueId(), liq.price)) {
-                            e.getWhoClicked().sendMessage(Component.text(prefix + "§c出金に失敗しました"));
+                        if (!vaultapi.withdraw(player.getUniqueId(), liq.price)) {
+                            player.sendMessage(Component.text(prefix + "§c出金に失敗しました"));
                             return;
                         }
-                        e.getWhoClicked().sendMessage(Component.text(prefix + "§r" + liq.displayName + "§rを購入しました"));
-                        if (e.getWhoClicked().getInventory().firstEmpty() == -1){
-                            // インベントリがいっぱいの場合自分のみ取得可能なアイテムを足元に置く
-                            e.getWhoClicked().getWorld().dropItem(e.getWhoClicked().getLocation(), liq.GenLiquor(buy_id).clone(), (Item item) -> {
-                                item.setPickupDelay(0);
-                                item.setOwner(e.getWhoClicked().getUniqueId());
-                                item.setCanMobPickup(false);
-                            });
-                        }
-                        else {
-                            e.getWhoClicked().getInventory().addItem(liq.GenLiquor(buy_id).clone());
-                        }
+                        player.getInventory().addItem(liq.GenLiquor(buy_id).clone());
+                        player.sendMessage(Component.text(prefix + "§r" + liq.displayName + "§rを購入しました"));
                     });
                 });
                 th.start();
@@ -253,39 +258,53 @@ public class Events implements Listener {
                 // 自分の記録
                 if (e.getRawSlot() == 2) {
                     e.getWhoClicked().closeInventory();
+                    Player player = (Player) e.getWhoClicked();
+                    UUID playerUuid = player.getUniqueId();
                     // DB処理はスレッドで行う
                     Thread th = new Thread(() -> {
-                        MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
-                        try {
-                            // 使用可能か確認
-                            String query = "SELECT SUM(price) AS buy_total, COUNT(*) AS buy_count FROM bar_shop_log WHERE liquor_name = '" + liq_name + "' AND uuid = '" + e.getWhoClicked().getUniqueId() + "' AND price <> 0;";
-                            ResultSet set = mysql.query(query);
-                            int buy_price = 0;
-                            int buy_count = 0;
-                            if (set.next()) {
-                                buy_price = set.getInt("buy_total");
-                                buy_count = set.getInt("buy_count");
+                        int buy_price = 0;
+                        int buy_count = 0;
+                        int drink_count = 0;
+                        try (Connection c = mysql.getConnection();
+                             PreparedStatement psBuy = c.prepareStatement(
+                                 "SELECT SUM(price) AS buy_total, COUNT(*) AS buy_count FROM bar_shop_log WHERE liquor_name = ? AND uuid = ? AND price <> 0"
+                             );
+                             PreparedStatement psDrink = c.prepareStatement(
+                                 "SELECT COUNT(*) AS drink_count FROM bar_drink_log WHERE liquor_name = ? AND uuid = ?"
+                             )
+                        ) {
+                            psBuy.setString(1, liq_name);
+                            psBuy.setString(2, playerUuid.toString());
+                            try (ResultSet set = psBuy.executeQuery()) {
+                                if (set.next()) {
+                                    buy_price = set.getInt("buy_total");
+                                    buy_count = set.getInt("buy_count");
+                                }
                             }
-                            query = "SELECT COUNT(*) AS drink_count FROM bar_drink_log WHERE liquor_name = '" + liq_name + "' AND uuid = '" + e.getWhoClicked().getUniqueId() + "';";
-                            set = mysql.query(query);
-                            int drink_count = 0;
-                            if (set.next()) {
-                                drink_count = set.getInt("drink_count");
+
+                            psDrink.setString(1, liq_name);
+                            psDrink.setString(2, playerUuid.toString());
+                            try (ResultSet set = psDrink.executeQuery()) {
+                                if (set.next()) {
+                                    drink_count = set.getInt("drink_count");
+                                }
                             }
-                            mysql.close();
-                            e.getWhoClicked().sendMessage(Component.text(prefix + "===== 個人ログ ====="));
-                            e.getWhoClicked().sendMessage(liq.displayName);
-                            e.getWhoClicked().sendMessage(Component.text("購入数：" + buy_count + "本（総額：" + buy_price + "）"));
-                            e.getWhoClicked().sendMessage(Component.text("飲んだ本数：" + drink_count + "本"));
                         } catch (SQLException error) {
-                            e.getWhoClicked().sendMessage(Component.text(prefix + "DBの参照に失敗しました"));
-                            try {
-                                mysql.close();
-                            } catch (NullPointerException throwables) {
-                                throwables.printStackTrace();
-                            }
-                            throw new RuntimeException(error);
+                            Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの参照に失敗しました")));
+                            mgbar.getLogger().severe("Failed to load personal record for uuid: " + playerUuid);
+                            mgbar.getLogger().severe(error.getMessage());
+                            return;
                         }
+
+                        final int buyPriceResult = buy_price;
+                        final int buyCountResult = buy_count;
+                        final int drinkCountResult = drink_count;
+                        Bukkit.getScheduler().runTask(mgbar, () -> {
+                            player.sendMessage(Component.text(prefix + "===== 個人ログ ====="));
+                            player.sendMessage(liq.displayName);
+                            player.sendMessage(Component.text("購入数：" + buyCountResult + "本（総額：" + buyPriceResult + "）"));
+                            player.sendMessage(Component.text("飲んだ本数：" + drinkCountResult + "本"));
+                        });
                     });
                     th.start();
                     return;
@@ -310,48 +329,60 @@ public class Events implements Listener {
                     return;
                 }
                 // DB処理はスレッドで行う
+                Player player = (Player) e.getWhoClicked();
+                ItemStack clickedItem = e.getCurrentItem().clone();
                 Thread th = new Thread(() -> {
-                    MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
                     // 検証
                     if (liq.verify_id){
-                        try {
-                            // 使用可能か確認
-                            String query = "SELECT * FROM bar_shop_log LEFT OUTER JOIN bar_drink_log ON bar_shop_log.buy_id = bar_drink_log.buy_id WHERE bar_shop_log.buy_id = '" + buy_id + "' AND bar_drink_log.id IS NULL";
-                            ResultSet set = mysql.query(query);
-                            if (!set.next()) {
-                                e.getWhoClicked().sendMessage(Component.text(prefix + "§cこのお酒は有効でないので使用できません"));
-                                e.getWhoClicked().getInventory().removeItemAnySlot(e.getCurrentItem());
-                                mysql.close();
-                                return;
+                        try (Connection c = mysql.getConnection();
+                             PreparedStatement ps = c.prepareStatement(
+                                 "SELECT 1 FROM bar_shop_log LEFT OUTER JOIN bar_drink_log ON bar_shop_log.buy_id = bar_drink_log.buy_id WHERE bar_shop_log.buy_id = ? AND bar_drink_log.id IS NULL"
+                             )
+                        ) {
+                            ps.setString(1, buy_id);
+                            try (ResultSet set = ps.executeQuery()) {
+                                if (!set.next()) {
+                                    Bukkit.getScheduler().runTask(mgbar, () -> {
+                                        player.sendMessage(Component.text(prefix + "§cこのお酒は有効でないので使用できません"));
+                                        player.getInventory().removeItemAnySlot(clickedItem);
+                                    });
+                                    return;
+                                }
                             }
-                            mysql.close();
                         } catch (SQLException error) {
-                            e.getWhoClicked().sendMessage(Component.text(prefix + "§cDBの参照に失敗しました"));
-                            try {
-                                mysql.close();
-                            } catch (NullPointerException throwables) {
-                                throwables.printStackTrace();
-                            }
-                            throw new RuntimeException(error);
+                            Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの参照に失敗しました")));
+                            mgbar.getLogger().severe("Failed to verify buy_id for resale: " + buy_id);
+                            mgbar.getLogger().severe(error.getMessage());
+                            return;
                         }
                     }
-                    // アイテム回収
-                    e.getWhoClicked().getInventory().removeItemAnySlot(e.getCurrentItem());
 
                     // ログ保存
-                    String win_name = "sale:" + liq.name;
-                    String query = "INSERT INTO bar_drink_log (time, liquor_name, mcid, uuid, price, buy_id, win_table) VALUES ('" + LocalDateTime.now() + "', '" + liq.name + "', '" + e.getWhoClicked().getName() + "', '" + e.getWhoClicked().getUniqueId() + "', " + liq.resale_price + ", '" + buy_id + "', '" + win_name + "');";
-                    if (!mysql.execute(query)){
-                        e.getWhoClicked().sendMessage(Component.text(prefix + "§cDBの保存に失敗しました"));
-                        try {
-                            mysql.close();
-                        } catch (NullPointerException throwables) {
-                            throwables.printStackTrace();
-                        }
+                    try (Connection c = mysql.getConnection();
+                         PreparedStatement ps = c.prepareStatement(
+                             "INSERT INTO bar_drink_log (time, liquor_name, mcid, uuid, price, buy_id, win_table) VALUES (?, ?, ?, ?, ?, ?, ?)"
+                         )
+                    ) {
+                        ps.setObject(1, LocalDateTime.now());
+                        ps.setString(2, liq.name);
+                        ps.setString(3, player.getName());
+                        ps.setString(4, player.getUniqueId().toString());
+                        ps.setDouble(5, liq.resale_price);
+                        ps.setString(6, buy_id);
+                        ps.setString(7, "sale:" + liq.name);
+                        ps.executeUpdate();
+                    } catch (SQLException error) {
+                        Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの保存に失敗しました")));
+                        mgbar.getLogger().severe("Failed to insert resale log for buy_id: " + buy_id);
+                        mgbar.getLogger().severe(error.getMessage());
                         return;
                     }
-                    vaultapi.deposit(e.getWhoClicked().getUniqueId(), liq.resale_price);
-                    e.getWhoClicked().sendMessage(prefix + "§e売却しました");
+
+                    Bukkit.getScheduler().runTask(mgbar, () -> {
+                        player.getInventory().removeItemAnySlot(clickedItem);
+                        vaultapi.deposit(player.getUniqueId(), liq.resale_price);
+                        player.sendMessage(prefix + "§e売却しました");
+                    });
                 });
                 th.start();
             }
