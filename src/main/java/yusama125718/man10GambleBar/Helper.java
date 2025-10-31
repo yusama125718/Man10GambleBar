@@ -1,14 +1,19 @@
 package yusama125718.man10GambleBar;
 
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import static net.kyori.adventure.text.event.ClickEvent.runCommand;
 import static yusama125718.man10GambleBar.Man10GambleBar.*;
@@ -57,30 +62,43 @@ public class Helper {
     public static void SendDrinkRanking(Player p, Liquor liq, int page){
         // DB処理はスレッドで行う
         Thread th = new Thread(() -> {
-            MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
-            try {
-                // 使用可能か確認
-                String query = "SELECT mcid, COUNT(*) AS drink_count, COUNT(CASE WHEN win_table IS NOT NULL THEN 1 END) AS win_count FROM bar_drink_log WHERE liquor_name = '" + liq.name + "' GROUP BY mcid ORDER BY drink_count DESC LIMIT 10 OFFSET " + (page - 1) * 10 + ";";
-                ResultSet set = mysql.query(query);
-                p.sendMessage(Component.text(prefix + "§e§l飲んだ数ランキング"));
-                p.sendMessage(liq.displayName);
-                int cnt = 1;
-                while (set.next()){
-                    p.sendMessage(Component.text("§e§l" + ((page - 1) * 10) + cnt + "位：§c§l" + set.getString("mcid") + "§r§f  " + set.getInt("drink_count") + "本"));
-                    cnt++;
+            List<Component> messages = new ArrayList<>();
+            messages.add(Component.text(prefix + "§e§l飲んだ数ランキング"));
+            messages.add(Component.text(liq.displayName));
+            int cnt = 1;
+
+            try (Connection c = mysql.getConnection();
+                 PreparedStatement ps = c.prepareStatement(
+                     "SELECT mcid, COUNT(*) AS drink_count, COUNT(CASE WHEN win_table IS NOT NULL THEN 1 END) AS win_count " +
+                         "FROM bar_drink_log WHERE liquor_name = ? GROUP BY mcid ORDER BY drink_count DESC LIMIT ? OFFSET ?"
+                 )
+            ) {
+                ps.setString(1, liq.name);
+                ps.setInt(2, 10);
+                ps.setInt(3, Math.max(page - 1, 0) * 10);
+                try (ResultSet set = ps.executeQuery()) {
+                    while (set.next()){
+                        String mcid = set.getString("mcid");
+                        int drinkCount = set.getInt("drink_count");
+                        messages.add(Component.text("§e§l" + ((page - 1) * 10 + cnt) + "位：§c§l" + mcid + "§r§f  " + drinkCount + "本"));
+                        cnt++;
+                    }
+                }
+            } catch (SQLException error) {
+                Bukkit.getScheduler().runTask(mgbar, () -> p.sendMessage(Component.text(prefix + "§cDBの参照に失敗しました")));
+                mgbar.getLogger().severe("Failed to load drink ranking for liquor: " + liq.name);
+                mgbar.getLogger().severe(error.getMessage());
+                return;
+            }
+
+            final int finalCnt = cnt;
+            Bukkit.getScheduler().runTask(mgbar, () -> {
+                for (Component message : messages) {
+                    p.sendMessage(message);
                 }
                 if (page != 1) p.sendMessage(Component.text("§b§l§n[前のページ]").clickEvent(runCommand("/mgbar rank " + liq.name + " " + (page - 1))));
-                if (cnt != 1) p.sendMessage(Component.text("§b§l§n[次のページ]").clickEvent(runCommand("/mgbar rank " + liq.name + " " + (page + 1))));
-                mysql.close();
-            } catch (SQLException error) {
-                p.sendMessage(Component.text(prefix + "DBの参照に失敗しました"));
-                try {
-                    mysql.close();
-                } catch (NullPointerException throwables) {
-                    throwables.printStackTrace();
-                }
-                throw new RuntimeException(error);
-            }
+                if (finalCnt != 1) p.sendMessage(Component.text("§b§l§n[次のページ]").clickEvent(runCommand("/mgbar rank " + liq.name + " " + (page + 1))));
+            });
         });
         th.start();
     }
