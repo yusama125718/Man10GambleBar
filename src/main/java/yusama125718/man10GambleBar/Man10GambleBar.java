@@ -47,9 +47,9 @@ public final class Man10GambleBar extends JavaPlugin {
         mysql = SetupMysqlDs();
         try {
             SetupSchema();
-            getLogger().info("Connected to" + mysql.getJdbcUrl() + ".");
+            getLogger().info("Connected to " + mysql.getJdbcUrl() + ".");
         } catch (SQLTransientConnectionException | SQLNonTransientConnectionException | SQLTimeoutException e) {
-            getLogger().severe("Failed to connect to" + mysql.getJdbcUrl() + ".");
+            getLogger().severe("Failed to connect to " + mysql.getJdbcUrl() + ".");
             getLogger().severe(ExceptionUtils.getFullStackTrace(e));
             getServer().getPluginManager().disablePlugin(this);
         } catch (SQLException e) {
@@ -70,7 +70,7 @@ public final class Man10GambleBar extends JavaPlugin {
         cfg.setJdbcUrl(mgbar.getConfig().getString("mysql.url"));
         cfg.setUsername(mgbar.getConfig().getString("mysql.user"));
         cfg.setPassword(mgbar.getConfig().getString("mysql.pass"));
-        cfg.setMaximumPoolSize(10);
+        cfg.setMaximumPoolSize(8);
         cfg.setMinimumIdle(2);
         cfg.setConnectionTimeout(10_000);
         cfg.setIdleTimeout(600_000);
