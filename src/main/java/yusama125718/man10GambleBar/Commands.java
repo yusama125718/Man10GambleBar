@@ -1,6 +1,7 @@
 package yusama125718.man10GambleBar;
 
 import net.kyori.adventure.text.Component;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -12,6 +13,8 @@ import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -167,16 +170,32 @@ public class Commands implements CommandExecutor, TabCompleter {
 
                     // DB処理はスレッドで行う
                     Thread th = new Thread(() -> {
-                        MySQLManager mysql = new MySQLManager(mgbar, "man10_token");
-                        String query = "INSERT INTO bar_shop_log (time, liquor_name, mcid, uuid, price, buy_id) VALUES ('" + LocalDateTime.now() + "', '" + liq.name + "', '" + mcid + "', '" + uuid + "', 0, '" + buy_id + "')";
-                        if (!mysql.execute(query)) {
-                            sender.sendMessage(Component.text(prefix + "§cDBの保存に失敗しました"));
-                            return;
+
+                        try (Connection c = mysql.getConnection();
+                             PreparedStatement ps = c.prepareStatement(
+                                 "INSERT INTO bar_shop_log (time, liquor_name, mcid, uuid, price, buy_id) VALUES (?, ?, ?, ?, 0, ?)"
+                             )
+                        ) {
+                            ps.setObject(1, LocalDateTime.now());
+                            ps.setString(2, liq.name);
+                            ps.setString(3, mcid);
+                            ps.setString(4, uuid);
+                            ps.setString(5, buy_id.toString());
+                            ps.executeUpdate();
+                        } catch (Exception e) {
+                            Bukkit.getScheduler().runTask(mgbar, () -> {
+                                sender.sendMessage(Component.text(prefix + "§cDBの保存に失敗しました"));
+                            });
+                            mgbar.getLogger().severe("Failed to save bar_shop_log.");
+                            mgbar.getLogger().severe(ExceptionUtils.getFullStackTrace(e));
                         }
-                        // インベントリはメインスレッドでいじる
-                        Bukkit.getScheduler().runTask(mgbar, () -> target.getInventory().addItem(liq.GenLiquor(buy_id).clone()));
-                        sender.sendMessage(Component.text(prefix + "§r§c§l" + mcid + "§rに" + liq.displayName + "§r§f§lを渡しました"));
-                        target.sendMessage(Component.text(prefix + "§r" + liq.displayName + "§rを入手しました"));
+
+                        // インベントリ操作とメッセージ送信はメインスレッドで行う
+                        Bukkit.getScheduler().runTask(mgbar, () -> {
+                            target.getInventory().addItem(liq.GenLiquor(buy_id).clone());
+                            sender.sendMessage(Component.text(prefix + "§r§c§l" + mcid + "§rに" + liq.displayName + "§r§f§lを渡しました"));
+                            target.sendMessage(Component.text(prefix + "§r" + liq.displayName + "§rを入手しました"));
+                        });
                     });
                     th.start();
                     return true;
