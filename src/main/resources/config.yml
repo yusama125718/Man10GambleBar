@@ -3,8 +3,6 @@ system: false
 disable_worlds:
 
 mysql:
-  host: localhost
-  port: '3306'
+  url: jdbc:mysql://localhost:3306/man10_gamble_bar?useSSL=false&serverTimezone=UTC
   user: root
   pass: password
-  db: man10_gamble_bar

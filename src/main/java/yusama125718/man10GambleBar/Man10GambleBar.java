@@ -1,6 +1,9 @@
 package yusama125718.man10GambleBar;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import net.kyori.adventure.text.Component;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.bukkit.*;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -15,6 +18,7 @@ import org.bukkit.potion.PotionEffectType;
 import java.io.File;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.sql.*;
 import java.util.*;
 
 public final class Man10GambleBar extends JavaPlugin {
@@ -27,9 +31,11 @@ public final class Man10GambleBar extends JavaPlugin {
     public static VaultAPI vaultapi;
     public static List<Player> remove_players;
     public static List<String> disable_worlds;
+    public static HikariDataSource mysql;
 
     private static File shop_folder;
     private static File liquor_folder;
+
 
     @Override
     public void onEnable() {
@@ -37,14 +43,76 @@ public final class Man10GambleBar extends JavaPlugin {
         new Events(this);
         getCommand("mgbar").setExecutor(new Commands());
         mgbar.saveDefaultConfig();
-        Thread th = new Thread(() -> {
-            MySQLManager mysql = new MySQLManager(mgbar, "man10_gamble_bar");
-            mysql.execute("create table if not exists bar_shop_log(id int auto_increment,time datetime,liquor_name varchar(20),mcid varchar(16),uuid varchar(36),price integer,buy_id varchar(36),primary key(id))");
-            mysql.execute("create table if not exists bar_drink_log(id int auto_increment,time datetime,liquor_name varchar(20),mcid varchar(16),uuid varchar(36),price integer,buy_id varchar(36),win_table varchar(50),primary key(id))");
-        });
-        th.start();
+
+        mysql = SetupMysqlDs();
+        try {
+            SetupSchema();
+            getLogger().info("Connected to" + mysql.getJdbcUrl() + ".");
+        } catch (SQLTransientConnectionException | SQLNonTransientConnectionException | SQLTimeoutException e) {
+            getLogger().severe("Failed to connect to" + mysql.getJdbcUrl() + ".");
+            getLogger().severe(ExceptionUtils.getFullStackTrace(e));
+            getServer().getPluginManager().disablePlugin(this);
+        } catch (SQLException e) {
+            getLogger().severe("Failed to initialize schema.");
+            getLogger().severe(ExceptionUtils.getFullStackTrace(e));
+            getServer().getPluginManager().disablePlugin(this);
+        }
         vaultapi = new VaultAPI();
         SetupPL();
+    }
+
+    private static HikariDataSource SetupMysqlDs() {
+        HikariConfig cfg = new HikariConfig();
+        cfg.setJdbcUrl(mgbar.getConfig().getString("mysql.url"));
+        cfg.setUsername(mgbar.getConfig().getString("mysql.user"));
+        cfg.setPassword(mgbar.getConfig().getString("mysql.password"));
+        cfg.setMaximumPoolSize(10);
+        cfg.setMinimumIdle(2);
+        cfg.setConnectionTimeout(10_000);
+        cfg.setIdleTimeout(600_000);
+        cfg.setMaxLifetime(1_700_000);
+
+        cfg.addDataSourceProperty("cachePrepStmts", "true");
+        cfg.addDataSourceProperty("prepStmtCacheSize", "250");
+        cfg.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+        cfg.addDataSourceProperty("useServerPrepStmts", "true");
+        cfg.addDataSourceProperty("rewriteBatchedStatements", "true");
+
+        return new HikariDataSource(cfg);
+    }
+
+    private static void SetupSchema() throws SQLException {
+        final String ddl_bar_shop_log = """
+            create table if not exists bar_shop_log (
+              id int auto_increment,
+              time datetime,
+              liquor_name varchar(20),
+              mcid varchar(16),
+              uuid varchar(36),
+              price integer,
+              buy_id varchar(36),
+              primary key(id)
+            )
+            """;
+        final String ddl_bar_drink_log = """
+            create table if not exists bar_drink_log (
+              id int auto_increment,
+              time datetime,
+              liquor_name varchar(20),
+              mcid varchar(16),
+              uuid varchar(36),
+              price integer,
+              buy_id varchar(36),
+              win_table varchar(50),
+              primary key(id)
+            )
+            """;
+
+        try (Connection c = mysql.getConnection();
+             Statement st = c.createStatement()) {
+            st.executeUpdate(ddl_bar_shop_log);
+            st.executeUpdate(ddl_bar_drink_log);
+        }
     }
 
     public static void SetupPL(){
@@ -237,6 +305,9 @@ public final class Man10GambleBar extends JavaPlugin {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+        if (mysql != null) {
+            mysql.close();
+        }
     }
 
     public static class Shop{
