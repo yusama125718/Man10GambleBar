@@ -201,8 +201,18 @@ public class Events implements Listener {
                             e.getWhoClicked().sendMessage(Component.text(prefix + "§c出金に失敗しました"));
                             return;
                         }
-                        e.getWhoClicked().getInventory().addItem(liq.GenLiquor(buy_id).clone());
                         e.getWhoClicked().sendMessage(Component.text(prefix + "§r" + liq.displayName + "§rを購入しました"));
+                        if (e.getWhoClicked().getInventory().firstEmpty() == -1){
+                            // インベントリがいっぱいの場合自分のみ取得可能なアイテムを足元に置く
+                            e.getWhoClicked().getWorld().dropItem(e.getWhoClicked().getLocation(), liq.GenLiquor(buy_id).clone(), (Item item) -> {
+                                item.setPickupDelay(0);
+                                item.setOwner(e.getWhoClicked().getUniqueId());
+                                item.setCanMobPickup(false);
+                            });
+                        }
+                        else {
+                            e.getWhoClicked().getInventory().addItem(liq.GenLiquor(buy_id).clone());
+                        }
                     });
                 });
                 th.start();
