@@ -5,6 +5,7 @@ import net.kyori.adventure.text.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
@@ -216,7 +217,17 @@ public class Events implements Listener {
                             player.sendMessage(Component.text(prefix + "§c出金に失敗しました"));
                             return;
                         }
-                        player.getInventory().addItem(liq.GenLiquor(buy_id).clone());
+                        if (player.getInventory().firstEmpty() == -1){
+                            // インベントリがいっぱいの場合自分のみ取得可能なアイテムを足元に置く
+                            player.getWorld().dropItem(e.getWhoClicked().getLocation(), liq.GenLiquor(buy_id).clone(), (Item item) -> {
+                                item.setPickupDelay(0);
+                                item.setOwner(e.getWhoClicked().getUniqueId());
+                                item.setCanMobPickup(false);
+                            });
+                        }
+                        else {
+                            player.getInventory().addItem(liq.GenLiquor(buy_id).clone());
+                        }
                         player.sendMessage(Component.text(prefix + "§r" + liq.displayName + "§rを購入しました"));
                     });
                 });
