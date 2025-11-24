@@ -80,58 +80,69 @@ public class Events implements Listener {
             Player player = e.getPlayer();
             // DB処理はスレッドで行う
             Thread th = new Thread(() -> {
-                if (liq.verify_id){
-                    try (Connection c = mysql.getConnection();
-                         PreparedStatement ps = c.prepareStatement(
-                             "SELECT 1 FROM bar_shop_log LEFT OUTER JOIN bar_drink_log ON bar_shop_log.buy_id = bar_drink_log.buy_id WHERE bar_shop_log.buy_id = ? AND bar_drink_log.id IS NULL"
-                         )
-                    ) {
-                        ps.setString(1, buy_id);
-                        try (ResultSet set = ps.executeQuery()) {
-                            if (!set.next()) {
-                                Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cこのお酒は有効でないので使用できません")));
-                                return;
+                LiquorWin win = null;
+                // コネクション開始
+                try (Connection c = mysql.getConnection()) {
+                    c.setAutoCommit(false);
+                    if (liq.verify_id) {
+                        // 確認（排他ロックをかける）
+                        try (PreparedStatement ps = c.prepareStatement(
+                                "SELECT 1 FROM bar_shop_log LEFT OUTER JOIN bar_drink_log ON bar_shop_log.buy_id = bar_drink_log.buy_id WHERE bar_shop_log.buy_id = ? AND bar_drink_log.id IS NULL FOR UPDATE"
+                        )) {
+                            ps.setString(1, buy_id);
+                            try (ResultSet set = ps.executeQuery()) {
+                                if (!set.next()) {
+                                    Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cこのお酒は有効でないので使用できません")));
+                                    return;
+                                }
                             }
+                        } catch (SQLException error) {
+                            c.rollback();
+                            Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの参照に失敗しました")));
+                            mgbar.getLogger().severe("Failed to verify buy_id: " + buy_id);
+                            mgbar.getLogger().severe(error.getMessage());
+                            return;
                         }
+                    }
+                    // 抽選処理
+                    int randomInt = ThreadLocalRandom.current().nextInt(0, 100000000);
+                    for (LiquorWin table : liq.wins) {
+                        if (randomInt < table.chance) {
+                            win = table;
+                            break;
+                        }
+                        randomInt -= table.chance;
+                    }
+                    // ログ保存
+                    int price = win == null ? 0 : win.price;
+                    try (PreparedStatement ps = c.prepareStatement(
+                            "INSERT INTO bar_drink_log (time, liquor_name, mcid, uuid, price, buy_id, win_table) VALUES (?, ?, ?, ?, ?, ?, ?)"
+                    )
+                    ) {
+                        ps.setObject(1, LocalDateTime.now());
+                        ps.setString(2, liq.name);
+                        ps.setString(3, player.getName());
+                        ps.setString(4, player.getUniqueId().toString());
+                        ps.setInt(5, price);
+                        ps.setString(6, buy_id);
+                        if (win == null) {
+                            ps.setNull(7, Types.VARCHAR);
+                        } else {
+                            ps.setString(7, win.name);
+                        }
+                        ps.executeUpdate();
                     } catch (SQLException error) {
-                        Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの参照に失敗しました")));
-                        mgbar.getLogger().severe("Failed to verify buy_id: " + buy_id);
+                        c.rollback();
+                        Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの保存に失敗しました")));
+                        mgbar.getLogger().severe("Failed to insert bar_drink_log for buy_id: " + buy_id);
                         mgbar.getLogger().severe(error.getMessage());
                         return;
                     }
-                }
-                LiquorWin win = null;
-                // 抽選処理
-                int randomInt = ThreadLocalRandom.current().nextInt(0, 100000000);
-                for (LiquorWin table: liq.wins) {
-                    if (randomInt < table.chance) {
-                        win = table;
-                        break;
-                    }
-                    randomInt -= table.chance;
-                }
-                // ログ保存
-                int price = win == null ? 0 : win.price;
-                try (Connection c = mysql.getConnection();
-                     PreparedStatement ps = c.prepareStatement(
-                         "INSERT INTO bar_drink_log (time, liquor_name, mcid, uuid, price, buy_id, win_table) VALUES (?, ?, ?, ?, ?, ?, ?)"
-                     )
-                ) {
-                    ps.setObject(1, LocalDateTime.now());
-                    ps.setString(2, liq.name);
-                    ps.setString(3, player.getName());
-                    ps.setString(4, player.getUniqueId().toString());
-                    ps.setInt(5, price);
-                    ps.setString(6, buy_id);
-                    if (win == null) {
-                        ps.setNull(7, Types.VARCHAR);
-                    } else {
-                        ps.setString(7, win.name);
-                    }
-                    ps.executeUpdate();
+                    // コミット（排他ロックを解除）
+                    c.commit();
                 } catch (SQLException error) {
-                    Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの保存に失敗しました")));
-                    mgbar.getLogger().severe("Failed to insert bar_drink_log for buy_id: " + buy_id);
+                    Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの参照に失敗しました")));
+                    mgbar.getLogger().severe("Failed on drink flow. buy_id: " + buy_id);
                     mgbar.getLogger().severe(error.getMessage());
                     return;
                 }
@@ -139,13 +150,17 @@ public class Events implements Listener {
                 Bukkit.getScheduler().runTask(mgbar, () -> {
                     // ハズレ時処理
                     if (finalWin == null) {
-                        if (liq.lose_commands != null) for (String cmd: liq.lose_commands) Bukkit.getServer().dispatchCommand(Bukkit.getServer().getConsoleSender(), cmd.replace("%player%", e.getPlayer().getName()));
-                        if (liq.lose_messages != null) for (String message: liq.lose_messages) e.getPlayer().sendMessage(Component.text(message.replace("&", "§")));
+                        if (liq.lose_commands != null) for (String cmd : liq.lose_commands)
+                            Bukkit.getServer().dispatchCommand(Bukkit.getServer().getConsoleSender(), cmd.replace("%player%", e.getPlayer().getName()));
+                        if (liq.lose_messages != null) for (String message : liq.lose_messages)
+                            e.getPlayer().sendMessage(Component.text(message.replace("&", "§")));
                     }
                     // 当選時処理
                     else {
-                        if (finalWin.commands != null) for (String cmd: finalWin.commands) Bukkit.getServer().dispatchCommand(Bukkit.getServer().getConsoleSender(), cmd.replace("%player%", e.getPlayer().getName()));
-                        if (finalWin.messages != null) for (String message: finalWin.messages) e.getPlayer().sendMessage(Component.text(message.replace("&", "§")));
+                        if (finalWin.commands != null) for (String cmd : finalWin.commands)
+                            Bukkit.getServer().dispatchCommand(Bukkit.getServer().getConsoleSender(), cmd.replace("%player%", e.getPlayer().getName()));
+                        if (finalWin.messages != null) for (String message : finalWin.messages)
+                            e.getPlayer().sendMessage(Component.text(message.replace("&", "§")));
                         vaultapi.deposit(e.getPlayer().getUniqueId(), finalWin.price);
                     }
                 });
@@ -345,50 +360,59 @@ public class Events implements Listener {
                 Thread th = new Thread(() -> {
                     // 検証
                     if (liq.verify_id){
-                        try (Connection c = mysql.getConnection();
-                             PreparedStatement ps = c.prepareStatement(
-                                 "SELECT 1 FROM bar_shop_log LEFT OUTER JOIN bar_drink_log ON bar_shop_log.buy_id = bar_drink_log.buy_id WHERE bar_shop_log.buy_id = ? AND bar_drink_log.id IS NULL"
-                             )
-                        ) {
-                            ps.setString(1, buy_id);
-                            try (ResultSet set = ps.executeQuery()) {
-                                if (!set.next()) {
-                                    Bukkit.getScheduler().runTask(mgbar, () -> {
-                                        player.sendMessage(Component.text(prefix + "§cこのお酒は有効でないので使用できません"));
-                                        player.getInventory().removeItemAnySlot(clickedItem);
-                                    });
-                                    return;
+                        // コネクションを開始
+                        try (Connection c = mysql.getConnection();) {
+                            c.setAutoCommit(false);
+                            // 確認（排他ロックをかける）
+                            try (PreparedStatement ps = c.prepareStatement(
+                                    "SELECT 1 FROM bar_shop_log LEFT OUTER JOIN bar_drink_log ON bar_shop_log.buy_id = bar_drink_log.buy_id WHERE bar_shop_log.buy_id = ? AND bar_drink_log.id IS NULL FOR UPDATE"
+                            )){
+                                ps.setString(1, buy_id);
+                                try (ResultSet set = ps.executeQuery()) {
+                                    if (!set.next()) {
+                                        Bukkit.getScheduler().runTask(mgbar, () -> {
+                                            player.sendMessage(Component.text(prefix + "§cこのお酒は有効でないので使用できません"));
+                                            player.getInventory().removeItemAnySlot(clickedItem);
+                                        });
+                                        return;
+                                    }
                                 }
                             }
+                            catch (SQLException error) {
+                                Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの参照に失敗しました")));
+                                mgbar.getLogger().severe("Failed to verify buy_id for resale: " + buy_id);
+                                mgbar.getLogger().severe(error.getMessage());
+                                return;
+                            }
+                            // ログ保存
+                            try (PreparedStatement ps = c.prepareStatement(
+                                    "INSERT INTO bar_drink_log (time, liquor_name, mcid, uuid, price, buy_id, win_table) VALUES (?, ?, ?, ?, ?, ?, ?)"
+                            )){
+                                ps.setObject(1, LocalDateTime.now());
+                                ps.setString(2, liq.name);
+                                ps.setString(3, player.getName());
+                                ps.setString(4, player.getUniqueId().toString());
+                                ps.setDouble(5, liq.resale_price);
+                                ps.setString(6, buy_id);
+                                ps.setString(7, "sale:" + liq.name);
+                                ps.executeUpdate();
+                            }
+                            catch (SQLException error) {
+                                Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの保存に失敗しました")));
+                                mgbar.getLogger().severe("Failed to insert resale log for buy_id: " + buy_id);
+                                mgbar.getLogger().severe(error.getMessage());
+                                return;
+                            }
+                            // コミット（排他ロックを解除）
+                            c.commit();
                         } catch (SQLException error) {
-                            Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの参照に失敗しました")));
-                            mgbar.getLogger().severe("Failed to verify buy_id for resale: " + buy_id);
+                            Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの処理に失敗しました")));
+                            mgbar.getLogger().severe("Failed on resale flow: " + buy_id);
                             mgbar.getLogger().severe(error.getMessage());
                             return;
                         }
                     }
-
-                    // ログ保存
-                    try (Connection c = mysql.getConnection();
-                         PreparedStatement ps = c.prepareStatement(
-                             "INSERT INTO bar_drink_log (time, liquor_name, mcid, uuid, price, buy_id, win_table) VALUES (?, ?, ?, ?, ?, ?, ?)"
-                         )
-                    ) {
-                        ps.setObject(1, LocalDateTime.now());
-                        ps.setString(2, liq.name);
-                        ps.setString(3, player.getName());
-                        ps.setString(4, player.getUniqueId().toString());
-                        ps.setDouble(5, liq.resale_price);
-                        ps.setString(6, buy_id);
-                        ps.setString(7, "sale:" + liq.name);
-                        ps.executeUpdate();
-                    } catch (SQLException error) {
-                        Bukkit.getScheduler().runTask(mgbar, () -> player.sendMessage(Component.text(prefix + "§cDBの保存に失敗しました")));
-                        mgbar.getLogger().severe("Failed to insert resale log for buy_id: " + buy_id);
-                        mgbar.getLogger().severe(error.getMessage());
-                        return;
-                    }
-
+                    // 問題なければお金を渡す（メインスレッドで実行）
                     Bukkit.getScheduler().runTask(mgbar, () -> {
                         player.getInventory().removeItemAnySlot(clickedItem);
                         vaultapi.deposit(player.getUniqueId(), liq.resale_price);
