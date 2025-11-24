@@ -69,8 +69,8 @@ public class Helper {
 
             try (Connection c = mysql.getConnection();
                  PreparedStatement ps = c.prepareStatement(
-                     "SELECT mcid, COUNT(*) AS drink_count, COUNT(CASE WHEN win_table IS NOT NULL THEN 1 END) AS win_count " +
-                         "FROM bar_drink_log WHERE liquor_name = ? GROUP BY mcid ORDER BY drink_count DESC LIMIT ? OFFSET ?"
+                     "SELECT  uuid AS target_uuid, (SELECT mcid FROM bar_drink_log WHERE uuid = target_uuid ORDER BY time DESC LIMIT 1) AS newest_mcid, COUNT(*) AS drink_count, COUNT(CASE WHEN win_table IS NOT NULL THEN 1 END) AS win_count " +
+                         "FROM bar_drink_log WHERE liquor_name = ? GROUP BY uuid ORDER BY drink_count DESC LIMIT ? OFFSET ?"
                  )
             ) {
                 ps.setString(1, liq.name);
@@ -78,7 +78,7 @@ public class Helper {
                 ps.setInt(3, Math.max(page - 1, 0) * 10);
                 try (ResultSet set = ps.executeQuery()) {
                     while (set.next()){
-                        String mcid = set.getString("mcid");
+                        String mcid = set.getString("newest_mcid");
                         int drinkCount = set.getInt("drink_count");
                         messages.add(Component.text("§e§l" + ((page - 1) * 10 + cnt) + "位：§c§l" + mcid + "§r§f  " + drinkCount + "本"));
                         cnt++;
