@@ -95,7 +95,7 @@ public final class Man10GambleBar extends JavaPlugin {
               uuid varchar(36),
               price integer,
               buy_id varchar(36),
-              primary key(id)
+              primary key(id),
               unique key uq_bar_shop_log_buy_id (buy_id)
             )
             """;
@@ -109,7 +109,7 @@ public final class Man10GambleBar extends JavaPlugin {
               price integer,
               buy_id varchar(36),
               win_table varchar(50),
-              primary key(id)
+              primary key(id),
               key idx_bar_drink_log_buy_id (buy_id)
             )
             """;
