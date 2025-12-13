@@ -69,8 +69,32 @@ public class Helper {
 
             try (Connection c = mysql.getConnection();
                  PreparedStatement ps = c.prepareStatement(
-                     "SELECT  uuid AS target_uuid, (SELECT mcid FROM bar_drink_log WHERE uuid = target_uuid ORDER BY time DESC LIMIT 1) AS newest_mcid, COUNT(*) AS drink_count, COUNT(CASE WHEN win_table IS NOT NULL THEN 1 END) AS win_count " +
-                         "FROM bar_drink_log WHERE liquor_name = ? GROUP BY uuid ORDER BY drink_count DESC LIMIT ? OFFSET ?"
+                     "WITH filtered AS ( " +
+                     "  SELECT uuid, mcid, win_table, time, id " +
+                     "  FROM bar_drink_log " +
+                     "  WHERE liquor_name = ? " +
+                     "), " +
+                     "latest AS ( " +
+                     "  SELECT uuid, mcid, " +
+                     "         ROW_NUMBER() OVER (PARTITION BY uuid ORDER BY time DESC, id DESC) AS rn " +
+                     "  FROM filtered " +
+                     "), " +
+                     "agg AS ( " +
+                     "  SELECT uuid, " +
+                     "         COUNT(*) AS drink_count, " +
+                     "         SUM(win_table IS NOT NULL) AS win_count " +
+                     "  FROM filtered " +
+                     "  GROUP BY uuid " +
+                     ") " +
+                     "SELECT a.uuid AS target_uuid, " +
+                     "       l.mcid AS newest_mcid, " +
+                     "       a.drink_count, " +
+                     "       a.win_count " +
+                     "FROM agg a " +
+                     "LEFT JOIN latest l " +
+                     "  ON l.uuid = a.uuid AND l.rn = 1 " +
+                     "ORDER BY a.drink_count DESC " +
+                     "LIMIT ? OFFSET ?"
                  )
             ) {
                 ps.setString(1, liq.name);
