@@ -12,3 +12,5 @@ permissions:
     default: op
   mgbar.p:
     default: true
+  mgbar.record:
+    default: op

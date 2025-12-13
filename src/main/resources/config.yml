@@ -6,3 +6,10 @@ mysql:
   url: jdbc:mysql://localhost:3306/man10_gamble_bar?useSSL=false&serverTimezone=UTC
   user: root
   pass: password
+
+db:
+  max_pool: 10
+  min_idle: 2
+  connection_timeout: 10000
+  idle_timeout: 600000
+  max_lifetime: 1700000

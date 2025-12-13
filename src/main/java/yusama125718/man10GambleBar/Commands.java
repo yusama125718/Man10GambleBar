@@ -82,6 +82,10 @@ public class Commands implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (args[0].equals("record")){
+                    if (!sender.hasPermission("mgbar.record")){
+                        sender.sendMessage(prefix + "§c権限がありません");
+                        return true;
+                    }
                     if (!CheckSystem((Player) sender)) return true;
                     GUI.OpenRecordMenu((Player) sender, 1);
                     return true;
@@ -201,6 +205,10 @@ public class Commands implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (args[0].equals("rank")){
+                    if (!sender.hasPermission("mgbar.record")){
+                        sender.sendMessage(prefix + "§c権限がありません");
+                        return true;
+                    }
                     if (!liquors.containsKey(args[1])){
                         sender.sendMessage(prefix + "§cその名前のお酒はありません");
                         return true;

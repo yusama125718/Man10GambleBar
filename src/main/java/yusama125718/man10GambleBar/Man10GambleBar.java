@@ -70,11 +70,11 @@ public final class Man10GambleBar extends JavaPlugin {
         cfg.setJdbcUrl(mgbar.getConfig().getString("mysql.url"));
         cfg.setUsername(mgbar.getConfig().getString("mysql.user"));
         cfg.setPassword(mgbar.getConfig().getString("mysql.pass"));
-        cfg.setMaximumPoolSize(8);
-        cfg.setMinimumIdle(2);
-        cfg.setConnectionTimeout(10_000);
-        cfg.setIdleTimeout(600_000);
-        cfg.setMaxLifetime(1_700_000);
+        cfg.setMaximumPoolSize(mgbar.getConfig().getInt("db.max_pool"));
+        cfg.setMinimumIdle(mgbar.getConfig().getInt("db.min_idle"));
+        cfg.setConnectionTimeout(mgbar.getConfig().getInt("db.connection_timeout"));
+        cfg.setIdleTimeout(mgbar.getConfig().getInt("db.idle_timeout"));
+        cfg.setMaxLifetime(mgbar.getConfig().getInt("db.max_lifetime"));
 
         cfg.addDataSourceProperty("cachePrepStmts", "true");
         cfg.addDataSourceProperty("prepStmtCacheSize", "250");
@@ -110,7 +110,9 @@ public final class Man10GambleBar extends JavaPlugin {
               buy_id varchar(36),
               win_table varchar(50),
               primary key(id),
-              key idx_bar_drink_log_buy_id (buy_id)
+              key idx_bar_drink_log_buy_id (buy_id),
+              key idx_bar_drink_log_liquor_uuid (liquor_name, uuid),
+              key idx_bar_drink_log_uuid_time (uuid, time DESC)
             )
             """;
 
