@@ -188,6 +188,7 @@ public class Events implements Listener {
             case "バーカウンター" -> {
                 if (e.getCurrentItem() == null || !e.getCurrentItem().hasItemMeta() || !e.getCurrentItem().getItemMeta().getPersistentDataContainer().has(new NamespacedKey(mgbar, "Man10GambleBar"), PersistentDataType.STRING))
                     return;
+                if (!e.getCurrentItem().getItemMeta().getPersistentDataContainer().has(new NamespacedKey(mgbar, "MGBarDisplay"))) return;
                 String liq_name = e.getCurrentItem().getItemMeta().getPersistentDataContainer().get(new NamespacedKey(mgbar, "Man10GambleBar"), PersistentDataType.STRING);
                 if (!liquors.containsKey(liq_name)) return;
                 Liquor liq = liquors.get(liq_name);

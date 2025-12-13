@@ -404,6 +404,7 @@ public final class Man10GambleBar extends JavaPlugin {
             meta.setColor(color);
             meta.lore(lore);
             meta.getPersistentDataContainer().set(new NamespacedKey(mgbar, "Man10GambleBar"), PersistentDataType.STRING, name);
+            meta.getPersistentDataContainer().set(new NamespacedKey(mgbar, "MGBarDisplay"), PersistentDataType.BOOLEAN, true);
             meta.addCustomEffect(new PotionEffect(PotionEffectType.BLINDNESS, 1, 1), false);
             meta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
             item.setItemMeta(meta);
